@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  env,
   getDatabaseKind,
   getMigrationDatabaseUrl,
   getSqlitePath,
@@ -7,6 +8,10 @@ import {
 } from "./env";
 
 describe("database environment helpers", () => {
+  it("exposes validated env defaults from T3 env", () => {
+    expect(env.SQLITE_PATH).toBe("./data/local.db");
+  });
+
   it("chooses postgres when DATABASE_URL exists", () => {
     expect(getDatabaseKind({ DATABASE_URL: "postgres://example" })).toBe(
       "postgres",
