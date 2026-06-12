@@ -67,6 +67,7 @@ describe("docs services", () => {
 
     expect(result.version.versionNumber).toBe(1);
     expect(result.version.html).toBe("<p>v1</p>");
+    expect(result.latestVersion.versionNumber).toBe(2);
   });
 
   it("allows a user with a shared primary email to read", async () => {

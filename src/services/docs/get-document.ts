@@ -23,16 +23,17 @@ export async function getDocument(
     throw forbiddenError("Document access denied");
   }
 
+  const latestVersion = await repository.findLatestVersion(document.id);
   const version =
     query.version === undefined
-      ? await repository.findLatestVersion(document.id)
+      ? latestVersion
       : await repository.findVersion(document.id, query.version);
 
-  if (!version) {
+  if (!version || !latestVersion) {
     throw notFoundError("Document version not found");
   }
 
-  return { document, version, access };
+  return { document, version, latestVersion, access };
 }
 
 async function resolveReadAccess(
