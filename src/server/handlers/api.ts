@@ -74,7 +74,7 @@ export function withApiHandler<TParams = unknown>(
     const url = new URL(request.url);
     let userId: string | undefined;
     let errorCode: string | undefined;
-    let response: Response;
+    let response: Response | undefined;
 
     try {
       const contextResult = await createApiContext(undefined, requestId);

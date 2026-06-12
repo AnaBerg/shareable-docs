@@ -16,7 +16,7 @@ export type ApiContextResult =
   | { ok: true; ctx: ApiContext }
   | { ok: false; response: Response };
 
-type DbLike = Db & {
+type UserLookupDb = {
   query: {
     users: {
       findFirst(args: unknown): Promise<User | undefined | null>;
@@ -25,7 +25,7 @@ type DbLike = Db & {
 };
 
 export async function createApiContext(
-  database: DbLike = db as DbLike,
+  database: UserLookupDb = db as UserLookupDb,
   requestId = crypto.randomUUID(),
 ): Promise<ApiContextResult> {
   const session = await auth();
@@ -55,7 +55,7 @@ export async function createApiContext(
   return {
     ok: true,
     ctx: {
-      db: database,
+      db: database as Db,
       requestId,
       user,
       userEmail: normalizeEmail(user.primaryEmail),
