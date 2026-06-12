@@ -73,11 +73,14 @@ The repository should provide scripts for common local database tasks:
 
 ```json
 {
+  "dev": "bun run db:local:up && next dev",
   "db:local:up": "docker compose up -d postgres",
   "db:local:down": "docker compose down",
   "db:local:logs": "docker compose logs -f postgres"
 }
 ```
+
+`bun dev` starts the local Postgres service automatically before launching `next dev`. `db:local:up` remains available for manual use when only the database service is needed.
 
 No local database data should be committed. If the Compose service uses a bind mount or named volume, the data directory must be ignored.
 
@@ -263,7 +266,8 @@ Automated checks should cover:
 
 Manual verification checklist:
 
-- Start local Postgres with `bun run db:local:up`.
+- Start local Postgres and the Next.js dev server with `bun dev`.
+- For database-only work, start local Postgres manually with `bun run db:local:up`.
 - Set `DATABASE_URL` to the local Docker Postgres URL.
 - Run Postgres migrations locally.
 - Create or send a Clerk test `user.created` event through the Clerk Dashboard using a tunnel.
