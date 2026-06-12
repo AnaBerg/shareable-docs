@@ -31,7 +31,7 @@ The new documents API must store HTML documents, support multiple immutable vers
 
 ## API Context
 
-Create a shared server helper for API Route Handlers, for example `src/server/api/context.ts`.
+Create a shared server helper for API Route Handlers in `src/server/foundation/context.ts`.
 
 The helper should build an `ApiContext` for every protected API request. It should:
 
@@ -61,7 +61,7 @@ type ApiContextResult =
   | { ok: false; response: Response };
 ```
 
-Route handlers should call this helper at the start of each endpoint and return `result.response` when `ok` is false. This keeps endpoint files focused on request parsing, authorization, and document behavior.
+HTTP handlers should call this helper at the start of each endpoint and return `result.response` when `ok` is false. This keeps `src/app/api/**/route.ts` files as thin Next.js adapters and keeps request parsing, authorization, and document behavior in server modules.
 
 ## API Endpoint Foundation
 
@@ -70,17 +70,16 @@ Create a small server-side API foundation before implementing the document endpo
 Suggested files:
 
 ```txt
-src/server/api/context.ts
-src/server/api/errors.ts
-src/server/api/handler.ts
-src/server/api/logger.ts
-src/server/api/requests.ts
-src/server/api/responses.ts
+src/server/handlers/api.ts
+src/server/handlers/docs.ts
+src/server/foundation/context.ts
+src/server/foundation/errors.ts
+src/server/foundation/logs.ts
 ```
 
 ### Handler wrapper
 
-`src/server/api/handler.ts` should expose a wrapper such as `withApiHandler`. It should:
+`src/server/handlers/api.ts` should expose a wrapper such as `withApiHandler`. It should:
 
 - Build `ApiContext` once per request.
 - Catch expected application errors and convert them to JSON responses.
@@ -107,13 +106,13 @@ Dynamic route params should still be awaited and validated by the endpoint or re
 
 ### Errors and responses
 
-`src/server/api/errors.ts` should define typed application errors, for example `ApiError`, with a status code, stable error code, safe message, and optional validation details. Business logic should throw these typed errors for expected failures such as forbidden access, missing documents, validation failures, and local user sync conflicts.
+`src/server/foundation/errors.ts` should define typed application errors, for example `ApiError`, with a status code, stable error code, safe message, and optional validation details. Business logic should throw these typed errors for expected failures such as forbidden access, missing documents, validation failures, and local user sync conflicts.
 
-`src/server/api/responses.ts` should provide JSON helpers for success and error responses. Response helpers should produce one consistent envelope for errors and should avoid leaking stack traces, SQL details, Clerk secrets, or submitted HTML.
+The handler layer should provide JSON helpers for success and error responses, either in `src/server/handlers/api.ts` or a sibling file under `src/server/handlers`. Response helpers should produce one consistent envelope for errors and should avoid leaking stack traces, SQL details, Clerk secrets, or submitted HTML.
 
 ### Request parsing
 
-`src/server/api/requests.ts` should contain reusable helpers for:
+`src/server/handlers/api.ts`, or a sibling file under `src/server/handlers`, should contain reusable helpers for:
 
 - Reading JSON request bodies safely.
 - Returning `400` for malformed JSON.
@@ -124,13 +123,13 @@ Endpoint files should not duplicate try/catch blocks for JSON parsing or Zod for
 
 ### Database access
 
-Route Handlers should not import the global database directly. They should receive `ctx.db` from `ApiContext` and pass it into repositories or services. This makes tests easier and keeps database access consistent.
+Next.js route files and HTTP handlers should not import the global database directly. They should receive `ctx.db` from `ApiContext` and pass it into repositories or services. This makes tests easier and keeps database access consistent.
 
-Repository modules should own Drizzle queries. Service modules should own business rules and transaction orchestration. Route files should only compose the API foundation, request contracts, and service calls.
+Repository modules under `src/repository/docs` should own Drizzle queries. Service modules under `src/services/docs` should own business rules and transaction orchestration. Handler files under `src/server/handlers` should only compose the API foundation, request contracts, and service calls. Next route files under `src/app/api` should only export the corresponding handler functions required by Next.js.
 
 ### Logging
 
-`src/server/api/logger.ts` should expose a minimal structured logger wrapper around `console`. Logs should include:
+`src/server/foundation/logs.ts` should expose a minimal structured logger wrapper around `console`. Logs should include:
 
 - `requestId`.
 - HTTP method and pathname.
@@ -194,7 +193,7 @@ Indexes:
 
 ## Zod Contracts
 
-Create shared schemas for endpoint inputs and database inserts, for example under `src/server/api/docs/contracts.ts`.
+Create shared schemas for endpoint inputs, database inserts, and document-facing TypeScript types in `src/types/docs.ts`.
 
 API schemas:
 
@@ -448,18 +447,21 @@ Expected implementation files:
 src/app/api/docs/route.ts
 src/app/api/docs/[id]/route.ts
 src/app/api/docs/share/[id]/route.ts
-src/server/api/context.ts
-src/server/api/errors.ts
-src/server/api/handler.ts
-src/server/api/logger.ts
-src/server/api/requests.ts
-src/server/api/responses.ts
-src/server/api/docs/contracts.ts
-src/server/api/docs/repository.ts
-src/server/api/docs/service.ts
+src/server/handlers/api.ts
+src/server/handlers/docs.ts
+src/server/foundation/context.ts
+src/server/foundation/errors.ts
+src/server/foundation/logs.ts
+src/services/docs/create-document.ts
+src/services/docs/get-document.ts
+src/services/docs/list-documents.ts
+src/services/docs/share-document.ts
+src/services/docs/update-document.ts
+src/repository/docs/documents.ts
+src/types/docs.ts
 ```
 
-`repository.ts` should contain database queries. `service.ts` should contain authorization and document workflows that are easier to test without Route Handler boilerplate.
+Files under `src/repository/docs` should contain database queries. Files under `src/services/docs` should contain authorization and document workflows that are easier to test without Route Handler boilerplate. `src/server/handlers/docs.ts` should parse HTTP inputs and call the document services. The `src/app/api/docs/**/route.ts` files should stay thin and export the matching Next.js Route Handler methods from `src/server/handlers/docs.ts`.
 
 ## Testing
 
@@ -482,9 +484,9 @@ Test the API context helper:
 Test the API foundation:
 
 - Handler wrapper catches typed `ApiError` instances and returns the expected status and JSON error envelope.
-- Handler wrapper catches unexpected errors, logs them, and returns a generic `500`.
-- Request parser returns `400` for malformed JSON.
-- Zod request helpers format validation failures without echoing submitted HTML.
+- Handler wrapper catches unexpected errors, logs them through `src/server/foundation/logs.ts`, and returns a generic `500`.
+- Request parser in the handler layer returns `400` for malformed JSON.
+- Zod request helpers in the handler layer format validation failures without echoing submitted HTML.
 - Completion logs include request id, method, pathname, status, duration, and user id when available.
 
 Test the document service:
@@ -499,7 +501,7 @@ Test the document service:
 - List returns owned, shared, or all based on the filter.
 - User without primary email gets no shared documents.
 
-Test Route Handlers with mocked service/context dependencies where useful:
+Test HTTP handlers with mocked service/context dependencies where useful:
 
 - `POST /api/docs` returns `201`.
 - `GET /api/docs/{id}` returns latest by default.
@@ -511,14 +513,15 @@ Test Route Handlers with mocked service/context dependencies where useful:
 
 1. Add Drizzle schema definitions for `documents`, `document_versions`, and `document_shares`.
 2. Generate a Postgres migration with `bun run db:generate`.
-3. Add the shared API foundation: errors, responses, request parsing, logging, handler wrapper, and API context.
+3. Add the shared API foundation: errors, logging, and API context under `src/server/foundation`.
 4. Add foundation tests before implementation.
-5. Add Zod contracts for docs endpoints and DB writes.
-6. Add repository and service tests before implementation.
-7. Add repository and service implementation.
-8. Add Route Handler tests before each handler implementation.
-9. Add Route Handlers using the shared handler wrapper.
-10. Run `bun run test`, `bun run typecheck`, and `bun run lint`.
+5. Add the shared handler wrapper, response helpers, and request parsing under `src/server/handlers`.
+6. Add Zod contracts and document types in `src/types/docs.ts`.
+7. Add repository and service tests before implementation.
+8. Add repository and service implementation under `src/repository/docs` and `src/services/docs`.
+9. Add handler tests before each handler implementation.
+10. Add thin Next.js Route Handlers in `src/app/api/docs/**/route.ts` that delegate to `src/server/handlers/docs.ts`.
+11. Run `bun run test`, `bun run typecheck`, and `bun run lint`.
 
 ## Open Decisions Resolved
 
