@@ -24,7 +24,9 @@ Run the test suite with:
 bun run test
 ```
 
-Vitest runs in `test` mode and loads `.env.test` when present. Set `DATABASE_URL` there if you need a custom test database URL; otherwise the Vitest config uses a local Postgres URL fallback for unit tests.
+Vitest runs in `test` mode and loads `.env.test` when present. The current unit tests do not connect to Postgres, but T3 Env still validates that `DATABASE_URL` is set. When `.env.test` does not provide one, the Vitest config supplies a local Postgres URL only as a valid placeholder for that env validation.
+
+For tests that connect to Postgres, create `.env.test` with a real `DATABASE_URL` for the test database.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
