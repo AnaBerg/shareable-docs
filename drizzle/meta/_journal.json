@@ -8,6 +8,13 @@
       "when": 1781227457832,
       "tag": "0000_create_users_table",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1781298395771,
+      "tag": "0001_wide_flatman",
+      "breakpoints": true
     }
   ]
 }
