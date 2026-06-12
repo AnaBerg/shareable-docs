@@ -16,6 +16,18 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Tests
+
+Run the test suite with:
+
+```bash
+bun run test
+```
+
+Vitest runs in `test` mode and loads `.env.test` when present. The current unit tests do not connect to Postgres, but T3 Env still validates that `DATABASE_URL` is set. When `.env.test` does not provide one, the Vitest config supplies a local Postgres URL only as a valid placeholder for that env validation.
+
+For tests that connect to Postgres, create `.env.test` with a real `DATABASE_URL` for the test database.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.

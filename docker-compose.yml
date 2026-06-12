@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: shareable_docs
+      POSTGRES_PASSWORD: shareable_docs
+      POSTGRES_DB: shareable_docs
+    volumes:
+      - shareable_docs_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U shareable_docs -d shareable_docs"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  shareable_docs_postgres:
