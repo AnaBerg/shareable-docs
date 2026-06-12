@@ -73,14 +73,15 @@ The repository should provide scripts for common local database tasks:
 
 ```json
 {
-  "dev": "bun run db:local:up && next dev",
+  "dev": "bun scripts/dev-preflight.mjs -- next dev",
+  "dev:preflight": "bun scripts/dev-preflight.mjs",
   "db:local:up": "docker compose up -d postgres",
   "db:local:down": "docker compose down",
   "db:local:logs": "docker compose logs -f postgres"
 }
 ```
 
-`bun dev` starts the local Postgres service automatically before launching `next dev`. `db:local:up` remains available for manual use when only the database service is needed.
+`bun dev` runs a Docker/Compose preflight, starts the local Postgres service, waits for the container to be running and healthy, then launches `next dev`. `bun run dev:preflight` runs only the preflight checks. `db:local:up` remains available for manual use when only the database service is needed.
 
 No local database data should be committed. If the Compose service uses a bind mount or named volume, the data directory must be ignored.
 

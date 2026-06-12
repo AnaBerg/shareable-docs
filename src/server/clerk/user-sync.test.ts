@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
+import { and, eq, isNull } from "drizzle-orm";
+import { users } from "@/db/schema";
 import {
+  createDrizzleUserSyncRepository,
   mapClerkUser,
   syncClerkUserDeleted,
   syncClerkUserUpserted,
@@ -36,6 +39,18 @@ describe("mapClerkUser", () => {
         clerkUser({ primaryEmailAddressId: "missing", emailAddresses: [] }),
       ).primaryEmail,
     ).toBeNull();
+  });
+
+  it("stores null email when primary email value is absent or blank", () => {
+    for (const emailAddress of [null, undefined, ""]) {
+      expect(
+        mapClerkUser(
+          clerkUser({
+            emailAddresses: [{ id: "email_1", emailAddress }],
+          }),
+        ).primaryEmail,
+      ).toBeNull();
+    }
   });
 });
 
@@ -79,5 +94,28 @@ describe("syncClerkUserDeleted", () => {
     await syncClerkUserDeleted(repo, {});
 
     expect(repo.softDeleteUser).not.toHaveBeenCalled();
+  });
+});
+
+describe("createDrizzleUserSyncRepository", () => {
+  it("soft deletes only active users", async () => {
+    let whereCondition: unknown;
+    const database = {
+      update: vi.fn(() => ({
+        set: vi.fn(() => ({
+          where: vi.fn((condition) => {
+            whereCondition = condition;
+            return Promise.resolve();
+          }),
+        })),
+      })),
+    } as unknown as Parameters<typeof createDrizzleUserSyncRepository>[0];
+    const repo = createDrizzleUserSyncRepository(database);
+
+    await repo.softDeleteUser("user_123", new Date("2026-06-12T00:00:00.000Z"));
+
+    expect(whereCondition).toEqual(
+      and(eq(users.clerkUserId, "user_123"), isNull(users.deletedAt)),
+    );
   });
 });

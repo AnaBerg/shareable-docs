@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 import { createDb } from "@/db";
 import { users } from "@/db/schema";
@@ -8,7 +8,7 @@ export type ClerkUserLike = {
   primaryEmailAddressId?: string | null;
   emailAddresses?: Array<{
     id: string;
-    emailAddress: string;
+    emailAddress?: string | null;
   }>;
   firstName?: string | null;
   lastName?: string | null;
@@ -57,9 +57,11 @@ type DrizzleLike = {
 
 export function mapClerkUser(user: ClerkUserLike): LocalUserWrite {
   const now = new Date();
+  const primaryEmailAddress = user.emailAddresses?.find(
+    (email) => email.id === user.primaryEmailAddressId,
+  )?.emailAddress;
   const primaryEmail =
-    user.emailAddresses?.find((email) => email.id === user.primaryEmailAddressId)
-      ?.emailAddress ?? null;
+    primaryEmailAddress === "" ? null : primaryEmailAddress ?? null;
 
   return {
     id: crypto.randomUUID(),
@@ -109,7 +111,7 @@ export function createDrizzleUserSyncRepository(
       await database
         .update(users)
         .set({ updatedAt: deletedAt, deletedAt })
-        .where(eq(users.clerkUserId, clerkUserId));
+        .where(and(eq(users.clerkUserId, clerkUserId), isNull(users.deletedAt)));
     },
   };
 }

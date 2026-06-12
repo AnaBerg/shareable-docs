@@ -7,8 +7,8 @@ type ClerkUserPayload = ClerkUserLike & {
   primary_email_address_id?: string | null;
   email_addresses?: Array<{
     id: string;
-    email_address?: string;
-    emailAddress?: string;
+    email_address?: string | null;
+    emailAddress?: string | null;
   }>;
 };
 
@@ -27,13 +27,13 @@ export function toClerkUserLike(data: ClerkUserPayload): ClerkUserLike {
 function toEmailAddresses(user: {
   email_addresses?: Array<{
     id: string;
-    email_address?: string;
-    emailAddress?: string;
+    email_address?: string | null;
+    emailAddress?: string | null;
   }>;
 }): ClerkUserLike["emailAddresses"] {
   return user.email_addresses?.map((email) => ({
     id: email.id,
-    emailAddress: email.emailAddress ?? email.email_address ?? "",
+    emailAddress: email.emailAddress ?? email.email_address,
   }));
 }
 
