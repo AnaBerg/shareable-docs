@@ -104,7 +104,7 @@ export const shareDocumentHandler = withApiHandler<{ id: string }>(
 
     return jsonResponse({
       id: result.document.id,
-      sharedWith: result.shares.map((share) => share.sharedWithEmail),
+      sharedWith: input.emails,
     });
   },
 );

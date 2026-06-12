@@ -129,6 +129,26 @@ describe("docs services", () => {
     );
   });
 
+  it("maps duplicate version races to conflict errors", async () => {
+    const ctx = apiContext("owner");
+    const created = await seedDocument(ctx, "<p>v1</p>");
+    const conflictRepo = {
+      findDocumentById: repo.findDocumentById.bind(repo),
+      addVersion: async () => {
+        throw Object.assign(new Error("duplicate key"), { code: "23505" });
+      },
+    };
+
+    await expect(
+      updateDocument(
+        ctx,
+        { id: created.document.id },
+        { html: "<p>v2</p>" },
+        conflictRepo as never,
+      ),
+    ).rejects.toMatchObject({ status: 409, code: "conflict" });
+  });
+
   it("allows the owner or a shared user to share a document", async () => {
     const ownerCtx = apiContext("owner");
     const created = await seedDocument(ownerCtx, "<p>shared</p>");

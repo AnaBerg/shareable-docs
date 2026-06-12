@@ -1,6 +1,10 @@
 import { createDocumentsRepository, type DocumentsRepository } from "@/repository/docs/documents";
 import type { ApiContext } from "@/server/foundation/context";
-import { forbiddenError, notFoundError } from "@/server/foundation/errors";
+import {
+  conflictError,
+  forbiddenError,
+  notFoundError,
+} from "@/server/foundation/errors";
 import type { DocumentRouteParams, UpdateDocumentRequest } from "@/types/docs";
 
 export async function updateDocument(
@@ -18,7 +22,7 @@ export async function updateDocument(
     throw forbiddenError("Only the document owner can update it");
   }
 
-  const updated = await repository.addVersion({
+  const updated = await addVersionOrConflict(repository, {
     documentId: document.id,
     html: input.html,
     createdByUserId: ctx.user.id,
@@ -29,4 +33,32 @@ export async function updateDocument(
   }
 
   return updated;
+}
+
+async function addVersionOrConflict(
+  repository: DocumentsRepository,
+  input: {
+    documentId: string;
+    html: string;
+    createdByUserId: string;
+  },
+) {
+  try {
+    return await repository.addVersion(input);
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      throw conflictError("Document version conflict");
+    }
+
+    throw error;
+  }
+}
+
+function isUniqueViolation(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "23505"
+  );
 }

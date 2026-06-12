@@ -12,6 +12,11 @@ import {
   type NewDocumentVersion,
 } from "@/db";
 import type { ApiContext } from "@/server/foundation/context";
+import {
+  newDocumentSchema,
+  newDocumentShareSchema,
+  newDocumentVersionSchema,
+} from "@/types/docs";
 
 export type DocumentAccess = "owned" | "shared";
 
@@ -56,27 +61,29 @@ export function createDocumentsRepository(db: DocumentsDatabase): DocumentsRepos
     async createDocument(input) {
       return db.transaction(async (tx) => {
         const now = new Date();
+        const newDocument = newDocumentSchema.parse({
+          id: crypto.randomUUID(),
+          ...input.document,
+          createdAt: now,
+          updatedAt: now,
+          deletedAt: null,
+        });
         const [document] = await tx
           .insert(documents)
-          .values({
-            id: crypto.randomUUID(),
-            ...input.document,
-            createdAt: now,
-            updatedAt: now,
-            deletedAt: null,
-          })
+          .values(newDocument)
           .returning();
 
+        const newVersion = newDocumentVersionSchema.parse({
+          id: crypto.randomUUID(),
+          documentId: document.id,
+          versionNumber: 1,
+          html: input.version.html,
+          createdByUserId: input.version.createdByUserId,
+          createdAt: now,
+        });
         const [version] = await tx
           .insert(documentVersions)
-          .values({
-            id: crypto.randomUUID(),
-            documentId: document.id,
-            versionNumber: 1,
-            html: input.version.html,
-            createdByUserId: input.version.createdByUserId,
-            createdAt: now,
-          })
+          .values(newVersion)
           .returning();
 
         return { document, version };
@@ -156,16 +163,17 @@ export function createDocumentsRepository(db: DocumentsDatabase): DocumentsRepos
           .limit(1);
 
         const now = new Date();
+        const newVersion = newDocumentVersionSchema.parse({
+          id: crypto.randomUUID(),
+          documentId: input.documentId,
+          versionNumber: (latestVersion?.versionNumber ?? 0) + 1,
+          html: input.html,
+          createdByUserId: input.createdByUserId,
+          createdAt: now,
+        });
         const [version] = await tx
           .insert(documentVersions)
-          .values({
-            id: crypto.randomUUID(),
-            documentId: input.documentId,
-            versionNumber: (latestVersion?.versionNumber ?? 0) + 1,
-            html: input.html,
-            createdByUserId: input.createdByUserId,
-            createdAt: now,
-          })
+          .values(newVersion)
           .returning();
 
         const [updatedDocument] = await tx
@@ -184,13 +192,14 @@ export function createDocumentsRepository(db: DocumentsDatabase): DocumentsRepos
           .insert(documentShares)
           .values(
             input.emails.map(
-              (email): NewDocumentShare => ({
-                id: crypto.randomUUID(),
-                documentId: input.documentId,
-                sharedWithEmail: email,
-                sharedByUserId: input.sharedByUserId,
-                createdAt: new Date(),
-              }),
+              (email): NewDocumentShare =>
+                newDocumentShareSchema.parse({
+                  id: crypto.randomUUID(),
+                  documentId: input.documentId,
+                  sharedWithEmail: email,
+                  sharedByUserId: input.sharedByUserId,
+                  createdAt: new Date(),
+                }),
             ),
           )
           .onConflictDoNothing({

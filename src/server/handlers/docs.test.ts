@@ -165,6 +165,7 @@ describe("docs HTTP handlers", () => {
     serviceMocks.shareDocument.mockResolvedValue({
       document: { id: "doc_1" },
       shares: [
+        { sharedWithEmail: "existing@example.com" },
         { sharedWithEmail: "reader@example.com" },
         { sharedWithEmail: "reviewer@example.com" },
       ],
