@@ -72,6 +72,7 @@ Suggested files:
 ```txt
 src/server/handlers/api.ts
 src/server/handlers/docs.ts
+src/server/handlers/docs/*.ts
 src/server/foundation/context.ts
 src/server/foundation/errors.ts
 src/server/foundation/logs.ts
@@ -457,11 +458,11 @@ src/services/docs/get-document.ts
 src/services/docs/list-documents.ts
 src/services/docs/share-document.ts
 src/services/docs/update-document.ts
-src/repository/docs/documents.ts
+src/repository/docs/*.ts
 src/types/docs.ts
 ```
 
-Files under `src/repository/docs` should contain database queries. Files under `src/services/docs` should contain authorization and document workflows that are easier to test without Route Handler boilerplate. `src/server/handlers/docs.ts` should parse HTTP inputs and call the document services. The `src/app/api/docs/**/route.ts` files should stay thin and export the matching Next.js Route Handler methods from `src/server/handlers/docs.ts`.
+Files under `src/repository/docs` should contain focused database queries. Files under `src/services/docs` should contain authorization and document workflows that are easier to test without Route Handler boilerplate. Files under `src/server/handlers/docs` should parse HTTP inputs and call the document services. The `src/app/api/docs/**/route.ts` files should stay thin and export the matching Next.js Route Handler methods.
 
 ## Testing
 

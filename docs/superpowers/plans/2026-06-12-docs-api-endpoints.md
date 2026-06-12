@@ -10,7 +10,7 @@
 
 ---
 
-### Task 1: Database Schema And Migration
+## Task 1: Database Schema And Migration
 
 **Files:**
 - Modify: `src/db/schema.ts`
@@ -60,11 +60,10 @@ Run: `bun run db:generate`
 
 Expected: a new migration creates the three tables and indexes.
 
-### Task 2: Document Types And Zod Contracts
+## Task 2: Document Types And Zod Contracts
 
 **Files:**
 - Create: `src/types/docs.ts`
-- Create: `src/types/docs.test.ts`
 
 - [ ] **Step 1: Add failing contract tests**
 
@@ -114,8 +113,8 @@ describe("docs contracts", () => {
   it("validates normalized DB share inserts", () => {
     expect(() =>
       newDocumentShareSchema.parse({
-        id: "share_1",
-        documentId: "doc_1",
+        id: "01HZXJK8JHX7QY9N7K6X8Y2W0B",
+        documentId: "01HZXJK8JHX7QY9N7K6X8Y2W0A",
         sharedWithEmail: "Reader@Example.com",
         sharedByUserId: "user_1",
         createdAt: new Date(),
@@ -127,7 +126,7 @@ describe("docs contracts", () => {
 
 - [ ] **Step 2: Verify tests fail**
 
-Run: `bun run test src/types/docs.test.ts`
+Run: `bun run typecheck`
 
 Expected: fail because `src/types/docs.ts` does not exist.
 
@@ -137,11 +136,11 @@ Create `src/types/docs.ts` with Zod schemas for request bodies, query strings, r
 
 - [ ] **Step 4: Verify contracts pass**
 
-Run: `bun run test src/types/docs.test.ts`
+Run: `bun run typecheck`
 
 Expected: pass.
 
-### Task 3: API Foundation And Context
+## Task 3: API Foundation And Context
 
 **Files:**
 - Create: `src/server/foundation/errors.ts`
@@ -158,11 +157,11 @@ Write tests that prove:
 ```ts
 // context.test.ts
 // - unauthenticated Clerk auth returns a 401 Response
-// - authenticated Clerk user without local active row returns a 409 Response
+// - authenticated Clerk user without local active row returns a 403 Response
 // - active local user returns ctx.user, ctx.userEmail, and ctx.db
 
 // api.test.ts
-// - withApiHandler converts ApiError into the expected JSON error response
+// - withApiHandler converts API error objects into the expected JSON error response
 // - withApiHandler converts unexpected errors into generic 500 JSON
 // - parseJsonBody returns validation_error for malformed JSON
 // - parseWithSchema does not include submitted HTML in validation details
@@ -182,16 +181,13 @@ Implement:
 
 ```ts
 // errors.ts
-export class ApiError extends Error {
-  constructor(
-    public readonly status: number,
-    public readonly code: string,
-    message: string,
-    public readonly details?: unknown,
-  ) {
-    super(message);
-  }
-}
+export type ApiError = {
+  kind: "api_error";
+  status: number;
+  code: string;
+  message: string;
+  details?: unknown;
+};
 ```
 
 Add helper constructors for validation, unauthorized, forbidden, not found, conflict, and internal errors. Implement `logs.ts` as a thin wrapper around `console.info` and `console.error`. Implement `context.ts` with `createApiContext(database = db)` and `auth()` from Clerk. Implement `api.ts` with JSON response helpers, request id extraction, safe JSON parsing, Zod parsing, and `withApiHandler`.
@@ -202,16 +198,16 @@ Run: `bun run test src/server/foundation/context.test.ts src/server/handlers/api
 
 Expected: pass.
 
-### Task 4: Repository And Services
+## Task 4: Repository And Services
 
 **Files:**
-- Create: `src/repository/docs/documents.ts`
+- Create: focused files under `src/repository/docs/*.ts`
 - Create: `src/services/docs/create-document.ts`
 - Create: `src/services/docs/get-document.ts`
 - Create: `src/services/docs/list-documents.ts`
 - Create: `src/services/docs/share-document.ts`
 - Create: `src/services/docs/update-document.ts`
-- Create: `src/services/docs/service.test.ts`
+- Create: one test file per service under `src/services/docs/*.test.ts`
 
 - [ ] **Step 1: Add failing service tests**
 
@@ -231,17 +227,17 @@ Create service tests using an in-memory repository fake. Cover:
 
 - [ ] **Step 2: Verify service tests fail**
 
-Run: `bun run test src/services/docs/service.test.ts`
+Run: `bun run test src/services/docs`
 
 Expected: fail because services do not exist.
 
 - [ ] **Step 3: Implement services**
 
-Services should accept `{ db, user, userEmail }` from `ApiContext`, create a repository with `createDocumentsRepository(db)`, enforce authorization, and throw `ApiError` for expected failures. `updateDocument` should call a repository transaction that computes the next version and inserts the new immutable version.
+Services should accept `{ db, user, userEmail }` from `ApiContext`, call focused repository functions, enforce authorization, and throw API error objects for expected failures. `updateDocument` should call a repository transaction that computes the next version and inserts the new immutable version.
 
 - [ ] **Step 4: Implement repository**
 
-Implement Drizzle queries in `src/repository/docs/documents.ts`. Include:
+Implement focused Drizzle query files under `src/repository/docs`. Include:
 
 ```ts
 createDocumentWithInitialVersion(input)
@@ -256,11 +252,11 @@ Use `onConflictDoNothing` for idempotent share inserts.
 
 - [ ] **Step 5: Verify services pass**
 
-Run: `bun run test src/services/docs/service.test.ts`
+Run: `bun run test src/services/docs`
 
 Expected: pass.
 
-### Task 5: HTTP Handlers And Next Route Adapters
+## Task 5: HTTP Handlers And Next Route Adapters
 
 **Files:**
 - Create: `src/server/handlers/docs.ts`
@@ -311,7 +307,7 @@ Run: `bun run test src/server/handlers/docs.test.ts`
 
 Expected: pass.
 
-### Task 6: Final Verification
+## Task 6: Final Verification
 
 **Files:**
 - All touched implementation and test files.

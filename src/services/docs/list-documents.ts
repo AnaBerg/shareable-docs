@@ -1,13 +1,12 @@
-import { createDocumentsRepository, type DocumentsRepository } from "@/repository/docs/documents";
+import { listAccessibleDocuments } from "@/repository/docs/list-documents";
 import type { ApiContext } from "@/server/foundation/context";
 import type { ListDocumentsQuery } from "@/types/docs";
 
 export async function listDocuments(
   ctx: ApiContext,
   query: ListDocumentsQuery,
-  repository: DocumentsRepository = createDocumentsRepository(ctx.db),
 ) {
-  const documents = await repository.listDocuments({
+  const documents = await listAccessibleDocuments(ctx.db, {
     ownerUserId: ctx.user.id,
     sharedWithEmail: ctx.userEmail,
     access: query.access,

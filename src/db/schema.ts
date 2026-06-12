@@ -1,4 +1,6 @@
+import { sql } from "drizzle-orm";
 import {
+  check,
   index,
   integer,
   pgTable,
@@ -104,6 +106,10 @@ export const documentShares = pgTable(
       table.sharedWithEmail,
     ),
     index("document_shares_shared_with_email_idx").on(table.sharedWithEmail),
+    check(
+      "document_shares_shared_with_email_normalized_check",
+      sql`${table.sharedWithEmail} = lower(trim(${table.sharedWithEmail}))`,
+    ),
   ],
 );
 

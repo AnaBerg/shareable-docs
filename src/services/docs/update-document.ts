@@ -1,4 +1,5 @@
-import { createDocumentsRepository, type DocumentsRepository } from "@/repository/docs/documents";
+import { addDocumentVersion } from "@/repository/docs/add-version";
+import { findDocumentById } from "@/repository/docs/find-document-by-id";
 import type { ApiContext } from "@/server/foundation/context";
 import {
   conflictError,
@@ -7,13 +8,14 @@ import {
 } from "@/server/foundation/errors";
 import type { DocumentRouteParams, UpdateDocumentRequest } from "@/types/docs";
 
+import { isUniqueViolation } from "./db-errors";
+
 export async function updateDocument(
   ctx: ApiContext,
   params: DocumentRouteParams,
   input: UpdateDocumentRequest,
-  repository: DocumentsRepository = createDocumentsRepository(ctx.db),
 ) {
-  const document = await repository.findDocumentById(params.id);
+  const document = await findDocumentById(ctx.db, params.id);
   if (!document) {
     throw notFoundError("Document not found");
   }
@@ -22,7 +24,7 @@ export async function updateDocument(
     throw forbiddenError("Only the document owner can update it");
   }
 
-  const updated = await addVersionOrConflict(repository, {
+  const updated = await addVersionOrConflict(ctx, {
     documentId: document.id,
     html: input.html,
     createdByUserId: ctx.user.id,
@@ -36,7 +38,7 @@ export async function updateDocument(
 }
 
 async function addVersionOrConflict(
-  repository: DocumentsRepository,
+  ctx: ApiContext,
   input: {
     documentId: string;
     html: string;
@@ -44,7 +46,7 @@ async function addVersionOrConflict(
   },
 ) {
   try {
-    return await repository.addVersion(input);
+    return await addDocumentVersion(ctx.db, input);
   } catch (error) {
     if (isUniqueViolation(error)) {
       throw conflictError("Document version conflict");
@@ -52,13 +54,4 @@ async function addVersionOrConflict(
 
     throw error;
   }
-}
-
-function isUniqueViolation(error: unknown): boolean {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    "code" in error &&
-    error.code === "23505"
-  );
 }

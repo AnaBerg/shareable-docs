@@ -2,6 +2,10 @@ import { auth } from "@clerk/nextjs/server";
 import { and, eq, isNull } from "drizzle-orm";
 
 import { db, type User, users } from "@/db";
+import { normalizeEmail } from "@/server/foundation/email";
+import { apiErrorResponse } from "@/server/foundation/responses";
+
+import { forbiddenError, unauthorizedError } from "./errors";
 
 type Db = typeof db;
 
@@ -33,7 +37,7 @@ export async function createApiContext(
   if (!session.userId) {
     return {
       ok: false,
-      response: errorResponse("unauthorized", "Authentication required", 401),
+      response: apiErrorResponse(unauthorizedError()),
     };
   }
 
@@ -44,10 +48,11 @@ export async function createApiContext(
   if (!user) {
     return {
       ok: false,
-      response: errorResponse(
-        "user_not_synced",
-        "Authenticated user has not been synchronized yet",
-        409,
+      response: apiErrorResponse(
+        forbiddenError(
+          "Authenticated user has not been synchronized yet",
+          "user_not_synced",
+        ),
       ),
     };
   }
@@ -61,13 +66,4 @@ export async function createApiContext(
       userEmail: normalizeEmail(user.primaryEmail),
     },
   };
-}
-
-function normalizeEmail(email: string | null): string | null {
-  const normalized = email?.trim().toLowerCase();
-  return normalized === "" ? null : normalized ?? null;
-}
-
-function errorResponse(code: string, message: string, status: number): Response {
-  return Response.json({ error: { code, message } }, { status });
 }

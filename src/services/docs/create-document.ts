@@ -1,13 +1,12 @@
-import { createDocumentsRepository, type DocumentsRepository } from "@/repository/docs/documents";
+import { createDocumentRecord } from "@/repository/docs/create-document";
 import type { ApiContext } from "@/server/foundation/context";
 import type { CreateDocumentRequest } from "@/types/docs";
 
 export async function createDocument(
   ctx: ApiContext,
   input: CreateDocumentRequest,
-  repository: DocumentsRepository = createDocumentsRepository(ctx.db),
 ) {
-  return repository.createDocument({
+  return createDocumentRecord(ctx.db, {
     document: {
       ownerUserId: ctx.user.id,
       name: input.name,

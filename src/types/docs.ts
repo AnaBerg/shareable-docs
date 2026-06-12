@@ -8,6 +8,9 @@ const nonEmptyTrimmedStringSchema = z
 const nonEmptyStringSchema = z.string().min(1, "Required");
 
 const dateSchema = z.date();
+const ulidSchema = z
+  .string()
+  .regex(/^[0-9A-HJKMNP-TV-Z]{26}$/, "Invalid ULID");
 
 const normalizedEmailSchema = z.string().trim().toLowerCase().email();
 
@@ -59,12 +62,12 @@ export const shareDocumentRequestSchema = z.object({
 });
 
 export const documentRouteParamsSchema = z.object({
-  id: nonEmptyStringSchema,
+  id: ulidSchema,
 });
 
 export const newDocumentSchema = z
   .object({
-    id: nonEmptyStringSchema,
+    id: ulidSchema,
     ownerUserId: nonEmptyStringSchema,
     name: nonEmptyTrimmedStringSchema,
     description: nullishDescriptionSchema,
@@ -76,8 +79,8 @@ export const newDocumentSchema = z
 
 export const newDocumentVersionSchema = z
   .object({
-    id: nonEmptyStringSchema,
-    documentId: nonEmptyStringSchema,
+    id: ulidSchema,
+    documentId: ulidSchema,
     versionNumber: z.number().int().positive(),
     html: nonEmptyStringSchema,
     createdByUserId: nonEmptyStringSchema,
@@ -87,8 +90,8 @@ export const newDocumentVersionSchema = z
 
 export const newDocumentShareSchema = z
   .object({
-    id: nonEmptyStringSchema,
-    documentId: nonEmptyStringSchema,
+    id: ulidSchema,
+    documentId: ulidSchema,
     sharedWithEmail: storedEmailSchema,
     sharedByUserId: nonEmptyStringSchema,
     createdAt: dateSchema,

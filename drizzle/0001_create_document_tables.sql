@@ -32,6 +32,7 @@ ALTER TABLE "document_versions" ADD CONSTRAINT "document_versions_created_by_use
 ALTER TABLE "documents" ADD CONSTRAINT "documents_owner_user_id_users_id_fk" FOREIGN KEY ("owner_user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "document_shares_document_id_email_unique" ON "document_shares" USING btree ("document_id","shared_with_email");--> statement-breakpoint
 CREATE INDEX "document_shares_shared_with_email_idx" ON "document_shares" USING btree ("shared_with_email");--> statement-breakpoint
+ALTER TABLE "document_shares" ADD CONSTRAINT "document_shares_shared_with_email_normalized_check" CHECK ("document_shares"."shared_with_email" = lower(trim("document_shares"."shared_with_email")));--> statement-breakpoint
 CREATE UNIQUE INDEX "document_versions_document_id_version_unique" ON "document_versions" USING btree ("document_id","version_number");--> statement-breakpoint
 CREATE INDEX "document_versions_document_id_created_at_idx" ON "document_versions" USING btree ("document_id","created_at");--> statement-breakpoint
 CREATE INDEX "documents_owner_user_id_idx" ON "documents" USING btree ("owner_user_id");

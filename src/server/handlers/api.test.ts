@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
-import { ApiError } from "@/server/foundation/errors";
+import { forbiddenError } from "@/server/foundation/errors";
 
 vi.mock("@/server/foundation/context", () => ({
   createApiContext: vi.fn().mockResolvedValue({
@@ -16,15 +16,15 @@ vi.mock("@/server/foundation/context", () => ({
 }));
 
 vi.mock("@/server/foundation/logs", () => ({
-  logApiError: vi.fn(),
+  getErrorType: vi.fn(() => "Error"),
   logApiRequest: vi.fn(),
 }));
 
 describe("API handler foundation", () => {
-  it("converts ApiError into a JSON error response", async () => {
+  it("converts API errors into a JSON error response", async () => {
     const { withApiHandler } = await import("./api");
     const handler = withApiHandler(async () => {
-      throw new ApiError(403, "forbidden", "Forbidden");
+      throw forbiddenError("Forbidden");
     });
 
     const response = await handler(new Request("https://app.test/api/docs"));

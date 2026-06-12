@@ -1,69 +1,11 @@
-import { ZodError, type ZodType } from "zod";
+import { createApiContext } from "@/server/foundation/context";
+import { isApiError } from "@/server/foundation/errors";
+import { getErrorType, logApiRequest } from "@/server/foundation/logs";
 
-import { createApiContext, type ApiContext } from "@/server/foundation/context";
-import { ApiError, validationError } from "@/server/foundation/errors";
-import { logApiError, logApiRequest } from "@/server/foundation/logs";
-
-type JsonResponseOptions = {
-  status?: number;
-  headers?: HeadersInit;
-};
-
-export type ApiHandler<TParams = unknown> = (input: {
-  request: Request;
-  ctx: ApiContext;
-  params: TParams;
-}) => Promise<Response>;
-
-export function jsonResponse(
-  body: unknown,
-  options: JsonResponseOptions = {},
-): Response {
-  return Response.json(body, {
-    status: options.status ?? 200,
-    headers: options.headers,
-  });
-}
-
-export function jsonErrorResponse(
-  code: string,
-  message: string,
-  status: number,
-  details?: unknown,
-): Response {
-  return jsonResponse(
-    {
-      error: {
-        code,
-        message,
-        ...(details === undefined ? {} : { details }),
-      },
-    },
-    { status },
-  );
-}
-
-export async function parseJsonBody(request: Request): Promise<unknown> {
-  try {
-    return await request.json();
-  } catch {
-    throw validationError("Malformed JSON");
-  }
-}
-
-export function parseWithSchema<T>(schema: ZodType<T>, value: unknown): T {
-  const result = schema.safeParse(value);
-
-  if (result.success) {
-    return result.data;
-  }
-
-  throw validationError("Invalid request", toSafeZodDetails(result.error));
-}
-
-export function searchParamsToObject(searchParams: URLSearchParams) {
-  return Object.fromEntries(searchParams.entries());
-}
+import { readErrorCode } from "./error-code";
+import { getRequestId } from "./request-id";
+import { apiErrorResponse } from "./response";
+import type { ApiHandler } from "./types";
 
 export function withApiHandler<TParams = unknown>(
   handler: ApiHandler<TParams>,
@@ -73,7 +15,12 @@ export function withApiHandler<TParams = unknown>(
     const requestId = getRequestId(request);
     const url = new URL(request.url);
     let userId: string | undefined;
-    let errorCode: string | undefined;
+    let error:
+      | {
+          code: string;
+          type: string;
+        }
+      | undefined;
     let response: Response | undefined;
 
     try {
@@ -81,7 +28,8 @@ export function withApiHandler<TParams = unknown>(
 
       if (!contextResult.ok) {
         response = contextResult.response;
-        errorCode = await readErrorCode(response);
+        const code = await readErrorCode(response);
+        error = code ? { code, type: "ApiError" } : undefined;
         return response;
       }
 
@@ -93,31 +41,20 @@ export function withApiHandler<TParams = unknown>(
         params: params as TParams,
       });
       return response;
-    } catch (error) {
-      if (error instanceof ApiError) {
-        errorCode = error.code;
-        response = jsonErrorResponse(
-          error.code,
-          error.message,
-          error.status,
-          error.details,
-        );
+    } catch (caught) {
+      if (isApiError(caught)) {
+        error = { code: caught.code, type: "ApiError" };
+        response = apiErrorResponse(caught);
         return response;
       }
 
-      errorCode = "internal_error";
-      logApiError(error, {
-        requestId,
-        method: request.method,
-        pathname: url.pathname,
-        userId,
-        errorCode,
+      error = { code: "internal_error", type: getErrorType(caught) };
+      response = apiErrorResponse({
+        kind: "api_error",
+        code: "internal_error",
+        message: "Internal server error",
+        status: 500,
       });
-      response = jsonErrorResponse(
-        "internal_error",
-        "Internal server error",
-        500,
-      );
       return response;
     } finally {
       const status = response?.status ?? 500;
@@ -126,35 +63,16 @@ export function withApiHandler<TParams = unknown>(
         method: request.method,
         pathname: url.pathname,
         status,
+        outcome: status >= 400 ? "error" : "success",
         durationMs: Math.round(performance.now() - startedAt),
         userId,
-        errorCode,
+        error,
       });
     }
   };
 }
 
-function getRequestId(request: Request): string {
-  return (
-    request.headers.get("x-request-id") ??
-    request.headers.get("x-vercel-id") ??
-    crypto.randomUUID()
-  );
-}
-
-function toSafeZodDetails(error: ZodError) {
-  return error.issues.map((issue) => ({
-    path: issue.path.map(String),
-    message: issue.message,
-  }));
-}
-
-async function readErrorCode(response: Response): Promise<string | undefined> {
-  try {
-    const clone = response.clone();
-    const body = (await clone.json()) as { error?: { code?: string } };
-    return body.error?.code;
-  } catch {
-    return undefined;
-  }
-}
+export { parseJsonBody } from "./request-body";
+export { searchParamsToObject } from "./query";
+export { jsonResponse } from "./response";
+export { parseWithSchema } from "./validation";

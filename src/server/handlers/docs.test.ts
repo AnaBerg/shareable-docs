@@ -23,7 +23,7 @@ vi.mock("@/server/foundation/context", () => ({
 }));
 
 vi.mock("@/server/foundation/logs", () => ({
-  logApiError: vi.fn(),
+  getErrorType: vi.fn(() => "Error"),
   logApiRequest: vi.fn(),
 }));
 
@@ -56,7 +56,7 @@ describe("docs HTTP handlers", () => {
     const now = new Date("2026-06-12T00:00:00.000Z");
     serviceMocks.createDocument.mockResolvedValue({
       document: {
-        id: "doc_1",
+        id: "01HZXJK8JHX7QY9N7K6X8Y2W0A",
         ownerUserId: "user_1",
         name: "Report",
         description: null,
@@ -81,7 +81,7 @@ describe("docs HTTP handlers", () => {
       { name: "Report", description: null, html: "<h1>Report</h1>" },
     );
     await expect(response.json()).resolves.toMatchObject({
-      id: "doc_1",
+      id: "01HZXJK8JHX7QY9N7K6X8Y2W0A",
       latestVersion: 1,
     });
   });
@@ -109,7 +109,7 @@ describe("docs HTTP handlers", () => {
     const now = new Date("2026-06-12T00:00:00.000Z");
     serviceMocks.getDocument.mockResolvedValue({
       document: {
-        id: "doc_1",
+        id: "01HZXJK8JHX7QY9N7K6X8Y2W0A",
         ownerUserId: "user_1",
         name: "Report",
         description: "A report",
@@ -126,18 +126,18 @@ describe("docs HTTP handlers", () => {
 
     const { getDocumentHandler } = await import("./docs");
     const response = await getDocumentHandler(
-      new Request("https://app.test/api/docs/doc_1"),
-      { params: Promise.resolve({ id: "doc_1" }) },
+      new Request("https://app.test/api/docs/01HZXJK8JHX7QY9N7K6X8Y2W0A"),
+      { params: Promise.resolve({ id: "01HZXJK8JHX7QY9N7K6X8Y2W0A" }) },
     );
 
     expect(response.status).toBe(200);
     expect(serviceMocks.getDocument).toHaveBeenCalledWith(
       expect.anything(),
-      { id: "doc_1" },
+      { id: "01HZXJK8JHX7QY9N7K6X8Y2W0A" },
       {},
     );
     await expect(response.json()).resolves.toMatchObject({
-      id: "doc_1",
+      id: "01HZXJK8JHX7QY9N7K6X8Y2W0A",
       version: 2,
       latestVersion: 2,
       html: "<p>v2</p>",
@@ -151,8 +151,8 @@ describe("docs HTTP handlers", () => {
 
     const { updateDocumentHandler } = await import("./docs");
     const response = await updateDocumentHandler(
-      jsonRequest("https://app.test/api/docs/doc_1", { html: "<p>v2</p>" }, "PUT"),
-      { params: Promise.resolve({ id: "doc_1" }) },
+      jsonRequest("https://app.test/api/docs/01HZXJK8JHX7QY9N7K6X8Y2W0A", { html: "<p>v2</p>" }, "PUT"),
+      { params: Promise.resolve({ id: "01HZXJK8JHX7QY9N7K6X8Y2W0A" }) },
     );
 
     expect(response.status).toBe(403);
@@ -163,7 +163,7 @@ describe("docs HTTP handlers", () => {
 
   it("shares a document with normalized email input", async () => {
     serviceMocks.shareDocument.mockResolvedValue({
-      document: { id: "doc_1" },
+      document: { id: "01HZXJK8JHX7QY9N7K6X8Y2W0A" },
       shares: [
         { sharedWithEmail: "existing@example.com" },
         { sharedWithEmail: "reader@example.com" },
@@ -173,20 +173,20 @@ describe("docs HTTP handlers", () => {
 
     const { shareDocumentHandler } = await import("./docs");
     const response = await shareDocumentHandler(
-      jsonRequest("https://app.test/api/docs/share/doc_1", {
+      jsonRequest("https://app.test/api/docs/share/01HZXJK8JHX7QY9N7K6X8Y2W0A", {
         emails: [" Reader@Example.com ", "reader@example.com", "reviewer@example.com"],
       }),
-      { params: Promise.resolve({ id: "doc_1" }) },
+      { params: Promise.resolve({ id: "01HZXJK8JHX7QY9N7K6X8Y2W0A" }) },
     );
 
     expect(response.status).toBe(200);
     expect(serviceMocks.shareDocument).toHaveBeenCalledWith(
       expect.anything(),
-      { id: "doc_1" },
+      { id: "01HZXJK8JHX7QY9N7K6X8Y2W0A" },
       { emails: ["reader@example.com", "reviewer@example.com"] },
     );
     await expect(response.json()).resolves.toEqual({
-      id: "doc_1",
+      id: "01HZXJK8JHX7QY9N7K6X8Y2W0A",
       sharedWith: ["reader@example.com", "reviewer@example.com"],
     });
   });
