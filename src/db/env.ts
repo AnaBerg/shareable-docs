@@ -10,7 +10,7 @@ export const env = createEnv({
   server: {
     CLERK_SECRET_KEY: z.string().min(1).optional(),
     CLERK_WEBHOOK_SIGNING_SECRET: z.string().min(1).optional(),
-    DATABASE_URL: z.string().url().optional(),
+    DATABASE_URL: z.string().url(),
     DATABASE_URL_UNPOOLED: z.string().url().optional(),
     VERCEL: z.string().optional(),
     VERCEL_ENV: z.string().optional(),

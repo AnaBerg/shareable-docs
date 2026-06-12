@@ -6,7 +6,9 @@ This project is a Next.js 16.2.9 App Router application under `src/app`. The PR 
 
 The local database direction is changing: local development should use a Dockerized Postgres database instead of SQLite. This keeps the local and deployed database dialects the same, removes dual-schema drift, and makes migrations simpler to reason about.
 
-Next.js 16 documentation in `node_modules/next/dist/docs` is authoritative for framework conventions in this repo. In particular, Middleware is now called Proxy, so the Clerk request guard belongs in `src/proxy.ts`, not `src/middleware.ts`.
+Next.js framework guidance is anchored to the version declared by the repository: `next` 16.2.9 in `package.json`. In Next.js 16, Middleware is now called Proxy, so the Clerk request guard belongs in `src/proxy.ts`, not `src/middleware.ts`.
+
+Request-time APIs in Next.js 16 App Router are asynchronous. Code should `await` `headers()`, `cookies()`, `draftMode()`, route `params`, and page `params`/`searchParams` where applicable. When migrating examples or local patterns from Next.js 13/14, replace synchronous access such as `cookies().get(...)`, `headers().get(...)`, direct `draftMode()` access, or direct `params`/`searchParams` destructuring with the async Next.js 16 pattern.
 
 ## Decisions
 
@@ -42,6 +44,8 @@ The application has four integration areas:
 
    `/api/webhooks/clerk` must remain public because Clerk webhook requests are not signed in as application users.
 
+   Proxy should follow Next.js 16 Proxy conventions. If Proxy logic needs request data, prefer the `NextRequest` argument. If Next.js request-time helpers are introduced around protected route decisions, use their async forms.
+
 3. Clerk webhook sync
 
    `src/app/api/webhooks/clerk/route.ts` exposes a public `POST` Route Handler. It uses `verifyWebhook()` from `@clerk/nextjs/webhooks`, then dispatches supported events into `src/server/clerk/user-sync.ts`.
@@ -49,6 +53,8 @@ The application has four integration areas:
    Event normalization helpers live outside the route file, for example in `src/app/api/webhooks/clerk/event.ts`, so the route file stays focused on verification, dispatch, and responses.
 
    The Route Handler exports `runtime = "nodejs"` to keep database driver expectations explicit.
+
+   Route Handlers should follow Next.js 16 async request-time API conventions. Await `headers()`, `cookies()`, `draftMode()`, and route context `params` when they are used. Query strings inside Route Handlers can come from the `Request`/`NextRequest` URL APIs; page-level `searchParams` props are async and should be awaited.
 
 4. Database layer
 
@@ -318,7 +324,7 @@ General project checks:
 - Drizzle config docs: https://orm.drizzle.team/docs/drizzle-config-file
 - T3 Env Next.js docs: https://env.t3.gg/docs/nextjs
 - Docker Postgres image docs: https://hub.docker.com/_/postgres
-- Local Next.js docs read from `node_modules/next/dist/docs/01-app/01-getting-started/16-proxy.md`
-- Local Next.js docs read from `node_modules/next/dist/docs/01-app/01-getting-started/15-route-handlers.md`
-- Local Next.js docs read from `node_modules/next/dist/docs/01-app/02-guides/environment-variables.md`
-- Local Next.js docs read from `node_modules/next/dist/docs/01-app/03-api-reference/07-edge.md`
+- Next.js 16.2.9 Proxy documentation, version anchored to `next` in `package.json`
+- Next.js 16.2.9 Route Handlers documentation, version anchored to `next` in `package.json`
+- Next.js 16.2.9 Request-time APIs documentation, version anchored to `next` in `package.json`
+- Next.js 16.2.9 Edge runtime documentation, version anchored to `next` in `package.json`
