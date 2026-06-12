@@ -64,7 +64,7 @@
 Run:
 
 ```bash
-bun add @clerk/nextjs @neondatabase/serverless @libsql/client drizzle
+bun add @clerk/nextjs @neondatabase/serverless @libsql/client drizzle-orm
 ```
 
 Expected: `package.json` and `bun.lock` update with the new runtime dependencies.
@@ -79,9 +79,9 @@ bun add -d drizzle-kit vitest
 
 Expected: `package.json` and `bun.lock` update with the new dev dependencies.
 
-- [ ] **Step 3: Add scripts**
+- [ ] **Step 3: Add setup scripts**
 
-Update `package.json` scripts to include:
+Update `package.json` scripts to include only commands that are executable before Drizzle config files exist:
 
 ```json
 {
@@ -91,12 +91,7 @@ Update `package.json` scripts to include:
   "lint": "eslint",
   "typecheck": "tsc --noEmit",
   "test": "vitest run",
-  "test:watch": "vitest",
-  "db:generate:pg": "drizzle-kit generate --config=drizzle.postgres.config.ts",
-  "db:migrate:pg": "drizzle-kit migrate --config=drizzle.postgres.config.ts",
-  "db:generate:sqlite": "drizzle-kit generate --config=drizzle.sqlite.config.ts",
-  "db:migrate:sqlite": "drizzle-kit migrate --config=drizzle.sqlite.config.ts",
-  "db:studio": "drizzle-kit studio"
+  "test:watch": "vitest"
 }
 ```
 
@@ -401,6 +396,18 @@ export { getDatabaseKind, getMigrationDatabaseUrl, getSqlitePath } from "./env";
 ```
 
 - [ ] **Step 7: Add Drizzle Kit configs**
+
+Update `package.json` scripts to add database commands after the config files exist:
+
+```json
+{
+  "db:generate:pg": "drizzle-kit generate --config=drizzle.postgres.config.ts",
+  "db:migrate:pg": "drizzle-kit migrate --config=drizzle.postgres.config.ts",
+  "db:generate:sqlite": "drizzle-kit generate --config=drizzle.sqlite.config.ts",
+  "db:migrate:sqlite": "drizzle-kit migrate --config=drizzle.sqlite.config.ts",
+  "db:studio": "drizzle-kit studio --config=drizzle.sqlite.config.ts"
+}
+```
 
 Create `drizzle.postgres.config.ts`:
 
