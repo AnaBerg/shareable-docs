@@ -16,6 +16,16 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Tests
+
+Run the test suite with:
+
+```bash
+bun run test
+```
+
+Vitest runs in `test` mode and loads `.env.test` when present. Set `DATABASE_URL` there if you need a custom test database URL; otherwise the Vitest config uses a local Postgres URL fallback for unit tests.
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
