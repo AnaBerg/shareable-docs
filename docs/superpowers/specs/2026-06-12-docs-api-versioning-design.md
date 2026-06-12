@@ -194,7 +194,7 @@ Indexes:
 
 ## Zod Contracts
 
-Create shared schemas for endpoint inputs and database inserts, for example under `src/server/docs/contracts.ts`.
+Create shared schemas for endpoint inputs and database inserts, for example under `src/server/api/docs/contracts.ts`.
 
 API schemas:
 
@@ -454,9 +454,9 @@ src/server/api/handler.ts
 src/server/api/logger.ts
 src/server/api/requests.ts
 src/server/api/responses.ts
-src/server/docs/contracts.ts
-src/server/docs/repository.ts
-src/server/docs/service.ts
+src/server/api/docs/contracts.ts
+src/server/api/docs/repository.ts
+src/server/api/docs/service.ts
 ```
 
 `repository.ts` should contain database queries. `service.ts` should contain authorization and document workflows that are easier to test without Route Handler boilerplate.
