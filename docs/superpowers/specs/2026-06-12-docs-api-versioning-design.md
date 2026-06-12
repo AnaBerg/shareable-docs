@@ -18,6 +18,7 @@ The new documents API must store HTML documents, support multiple immutable vers
 - Authorize sharing for any user who currently has access to the document.
 - Validate API request contracts and database write contracts with Zod.
 - Centralize request user resolution in a reusable API context helper.
+- Create a reusable endpoint foundation for error handling, request parsing, database access, structured logs, and business-logic dispatch.
 
 ## Non-Goals
 
@@ -61,6 +62,84 @@ type ApiContextResult =
 ```
 
 Route handlers should call this helper at the start of each endpoint and return `result.response` when `ok` is false. This keeps endpoint files focused on request parsing, authorization, and document behavior.
+
+## API Endpoint Foundation
+
+Create a small server-side API foundation before implementing the document endpoints. The foundation should make Route Handlers consistent and keep framework code separate from business logic.
+
+Suggested files:
+
+```txt
+src/server/api/context.ts
+src/server/api/errors.ts
+src/server/api/handler.ts
+src/server/api/logger.ts
+src/server/api/requests.ts
+src/server/api/responses.ts
+```
+
+### Handler wrapper
+
+`src/server/api/handler.ts` should expose a wrapper such as `withApiHandler`. It should:
+
+- Build `ApiContext` once per request.
+- Catch expected application errors and convert them to JSON responses.
+- Catch unexpected errors, log them, and return a generic `500` response.
+- Add a request id to every request if none is provided by upstream headers.
+- Log request completion with method, pathname, status, duration, request id, and user id when available.
+- Avoid logging submitted HTML or full request bodies.
+
+Suggested shape:
+
+```ts
+type ApiHandler<TParams = unknown> = (input: {
+  request: Request;
+  ctx: ApiContext;
+  params: TParams;
+}) => Promise<Response>;
+
+function withApiHandler<TParams>(
+  handler: ApiHandler<TParams>,
+): (request: Request, routeContext?: unknown) => Promise<Response>;
+```
+
+Dynamic route params should still be awaited and validated by the endpoint or request helper, because Next.js 16 exposes route `params` as a promise.
+
+### Errors and responses
+
+`src/server/api/errors.ts` should define typed application errors, for example `ApiError`, with a status code, stable error code, safe message, and optional validation details. Business logic should throw these typed errors for expected failures such as forbidden access, missing documents, validation failures, and local user sync conflicts.
+
+`src/server/api/responses.ts` should provide JSON helpers for success and error responses. Response helpers should produce one consistent envelope for errors and should avoid leaking stack traces, SQL details, Clerk secrets, or submitted HTML.
+
+### Request parsing
+
+`src/server/api/requests.ts` should contain reusable helpers for:
+
+- Reading JSON request bodies safely.
+- Returning `400` for malformed JSON.
+- Validating bodies, query strings, and route params with Zod.
+- Converting `URLSearchParams` to plain objects before validation.
+
+Endpoint files should not duplicate try/catch blocks for JSON parsing or Zod formatting.
+
+### Database access
+
+Route Handlers should not import the global database directly. They should receive `ctx.db` from `ApiContext` and pass it into repositories or services. This makes tests easier and keeps database access consistent.
+
+Repository modules should own Drizzle queries. Service modules should own business rules and transaction orchestration. Route files should only compose the API foundation, request contracts, and service calls.
+
+### Logging
+
+`src/server/api/logger.ts` should expose a minimal structured logger wrapper around `console`. Logs should include:
+
+- `requestId`.
+- HTTP method and pathname.
+- Response status.
+- Duration in milliseconds.
+- `userId` when a local user was resolved.
+- Stable error code for expected failures.
+
+Logs should not include raw HTML, complete request bodies, secret values, database URLs, or full email lists unless explicitly safe and necessary. For share operations, logging counts is safer than logging every email.
 
 ## Database Design
 
@@ -370,6 +449,10 @@ src/app/api/docs/route.ts
 src/app/api/docs/[id]/route.ts
 src/app/api/docs/share/[id]/route.ts
 src/server/api/context.ts
+src/server/api/errors.ts
+src/server/api/handler.ts
+src/server/api/logger.ts
+src/server/api/requests.ts
 src/server/api/responses.ts
 src/server/docs/contracts.ts
 src/server/docs/repository.ts
@@ -396,6 +479,14 @@ Test the API context helper:
 - Returns `409` when a Clerk user exists but no active local user row exists.
 - Returns `ApiContext` with local user and normalized email when present.
 
+Test the API foundation:
+
+- Handler wrapper catches typed `ApiError` instances and returns the expected status and JSON error envelope.
+- Handler wrapper catches unexpected errors, logs them, and returns a generic `500`.
+- Request parser returns `400` for malformed JSON.
+- Zod request helpers format validation failures without echoing submitted HTML.
+- Completion logs include request id, method, pathname, status, duration, and user id when available.
+
 Test the document service:
 
 - Create inserts metadata and initial version.
@@ -420,13 +511,14 @@ Test Route Handlers with mocked service/context dependencies where useful:
 
 1. Add Drizzle schema definitions for `documents`, `document_versions`, and `document_shares`.
 2. Generate a Postgres migration with `bun run db:generate`.
-3. Add Zod contracts.
-4. Add the API context helper.
-5. Add repository and service tests before implementation.
-6. Add repository and service implementation.
-7. Add Route Handler tests before each handler implementation.
-8. Add Route Handlers.
-9. Run `bun run test`, `bun run typecheck`, and `bun run lint`.
+3. Add the shared API foundation: errors, responses, request parsing, logging, handler wrapper, and API context.
+4. Add foundation tests before implementation.
+5. Add Zod contracts for docs endpoints and DB writes.
+6. Add repository and service tests before implementation.
+7. Add repository and service implementation.
+8. Add Route Handler tests before each handler implementation.
+9. Add Route Handlers using the shared handler wrapper.
+10. Run `bun run test`, `bun run typecheck`, and `bun run lint`.
 
 ## Open Decisions Resolved
 
