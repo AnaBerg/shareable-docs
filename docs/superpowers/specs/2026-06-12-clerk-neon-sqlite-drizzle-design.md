@@ -2,7 +2,7 @@
 
 ## Context
 
-This project is a Next.js 16.2.9 App Router application under `src/app`. The PR currently adds Clerk authentication, Clerk webhook user sync, Drizzle ORM, Neon Postgres for Vercel, and a SQLite local fallback.
+This project is a Next.js 16.2.9 App Router application under `src/app`. The PR adds Clerk authentication, Clerk webhook user sync, Drizzle ORM, Neon Postgres for Vercel, and a Dockerized local Postgres database for development.
 
 The local database direction is changing: local development should use a Dockerized Postgres database instead of SQLite. This keeps the local and deployed database dialects the same, removes dual-schema drift, and makes migrations simpler to reason about.
 
@@ -20,6 +20,7 @@ Next.js 16 documentation in `node_modules/next/dist/docs` is authoritative for f
 - Soft-delete local users on Clerk deletion by setting `deletedAt` instead of deleting the row.
 - Keep database access out of Proxy because Proxy runs in the Edge runtime and should only perform lightweight auth routing.
 - Use `@t3-oss/env-nextjs` and Zod for typed environment validation.
+- Use the `postgres` driver with `drizzle-orm/postgres-js` so local Docker Postgres and Neon Postgres use the same runtime driver.
 
 ## Architecture
 
@@ -294,7 +295,7 @@ General project checks:
 
 - Use Postgres only.
 - Use Docker Compose for local Postgres.
-- Use `@neondatabase/serverless` and `drizzle-orm/neon-http` for runtime Postgres access.
+- Use `postgres` and `drizzle-orm/postgres-js` for runtime Postgres access.
 - Use `@t3-oss/env-nextjs` and Zod for typed env validation.
 - Generate local user ids with `crypto.randomUUID()`.
 - Keep generated migration snapshots under source control.

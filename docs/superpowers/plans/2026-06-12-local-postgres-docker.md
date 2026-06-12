@@ -6,13 +6,15 @@
 
 **Architecture:** Use a single Postgres dialect everywhere. `DATABASE_URL` is required for runtime database access, local development gets it from Docker Compose, and Drizzle has one Postgres schema/config/migration pipeline.
 
-**Tech Stack:** Next.js 16.2.9, Clerk, Drizzle ORM, Neon serverless Postgres, Docker Compose Postgres, T3 Env, Vitest, Bun.
+**Tech Stack:** Next.js 16.2.9, Clerk, Drizzle ORM, Postgres.js, Neon Postgres, Docker Compose Postgres, T3 Env, Vitest, Bun.
 
 ---
 
 ## Acceptance Criteria
 
 - No runtime dependency on `@libsql/client`.
+- No runtime dependency on `@neondatabase/serverless`.
+- Runtime DB client uses `postgres` with `drizzle-orm/postgres-js`.
 - No `src/db/sqlite` files.
 - No `drizzle.sqlite.config.ts`.
 - No `drizzle/sqlite` migration folder.
@@ -82,16 +84,16 @@ Remove `DatabaseKind`, `getDatabaseKind`, `getSqlitePath`, and `toLibsqlFileUrl`
 
 Move the Postgres schema to `src/db/schema.ts`.
 
-`src/db/client.ts` should create only the Neon/Postgres Drizzle client:
+`src/db/client.ts` should create a standard Postgres client that works for both local Docker Postgres and Neon connection URLs:
 
 ```ts
-import { neon } from "@neondatabase/serverless";
-import { drizzle } from "drizzle-orm/neon-http";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { getDatabaseUrl } from "./env";
 import * as schema from "./schema";
 
 export function createDb(databaseUrl = getDatabaseUrl()) {
-  return drizzle(neon(databaseUrl), { schema });
+  return drizzle(postgres(databaseUrl), { schema });
 }
 
 export const db = createDb();
@@ -107,15 +109,17 @@ Update `src/server/clerk/user-sync.ts` to import only `users` from `@/db/schema`
 
 Keep tests for mapping, upsert, and soft delete passing.
 
-- [ ] **Step 5: Remove libSQL dependency**
+- [ ] **Step 5: Update Postgres runtime dependencies**
 
 Run:
 
 ```bash
+bun add postgres
+bun remove @neondatabase/serverless
 bun remove @libsql/client
 ```
 
-Expected: `package.json` and `bun.lock` no longer contain `@libsql/client`.
+Expected: `package.json` contains `postgres` and no longer contains `@libsql/client` or `@neondatabase/serverless`.
 
 - [ ] **Step 6: Verify Task 1**
 
@@ -128,6 +132,12 @@ bun run lint
 ```
 
 Expected: all commands exit 0.
+
+Also confirm:
+
+```bash
+! rg -n "sqlite|SQLite|libsql|@libsql|SQLITE_PATH|getDatabaseKind|getSqlitePath|toLibsqlFileUrl|@neondatabase/serverless|neon-http" src package.json
+```
 
 ## Task 2: Docker Compose And Drizzle Migration Pipeline
 
@@ -228,7 +238,7 @@ DATABASE_URL=postgres://shareable_docs:shareable_docs@localhost:5432/shareable_d
 - [ ] Confirm:
 
 ```bash
-! rg -n "sqlite|SQLite|libsql|@libsql|SQLITE_PATH|drizzle.sqlite|db:generate:sqlite|db:migrate:sqlite" src package.json .env.example drizzle.config.ts docker-compose.yml
+! rg -n "sqlite|SQLite|libsql|@libsql|SQLITE_PATH|drizzle.sqlite|db:generate:sqlite|db:migrate:sqlite|@neondatabase/serverless|neon-http" src package.json .env.example drizzle.config.ts docker-compose.yml
 ```
 
 Expected: no matches.

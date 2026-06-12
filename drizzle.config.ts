@@ -6,8 +6,8 @@ const databaseUrl = getMigrationDatabaseUrl(process.env);
 
 export default defineConfig({
   dialect: "postgresql",
-  schema: "./src/db/postgres/schema.ts",
-  out: "./drizzle/postgres",
+  schema: "./src/db/schema.ts",
+  out: "./drizzle",
   dbCredentials: {
     url: databaseUrl,
   },

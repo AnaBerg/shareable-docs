@@ -1,10 +1,7 @@
 import { eq } from "drizzle-orm";
 
-import { getDatabaseKind } from "@/db/env";
-import { createPostgresDb } from "@/db/postgres/client";
-import * as postgresSchema from "@/db/postgres/schema";
-import { createSqliteDb } from "@/db/sqlite/client";
-import * as sqliteSchema from "@/db/sqlite/schema";
+import { createDb } from "@/db";
+import { users } from "@/db/schema";
 
 export type ClerkUserLike = {
   id: string;
@@ -35,40 +32,24 @@ export type UserSyncRepository = {
   softDeleteUser(clerkUserId: string, deletedAt: Date): Promise<void>;
 };
 
-type SqliteUserWrite = Omit<
-  LocalUserWrite,
-  "createdAt" | "updatedAt" | "deletedAt"
-> & {
-  createdAt: string;
-  updatedAt: string;
-  deletedAt: string | null;
-};
-
 type UserUpsertSet = Pick<
   LocalUserWrite,
   "primaryEmail" | "firstName" | "lastName" | "imageUrl" | "updatedAt" | "deletedAt"
 >;
 
-type SqliteUserUpsertSet = Pick<
-  SqliteUserWrite,
-  "primaryEmail" | "firstName" | "lastName" | "imageUrl" | "updatedAt" | "deletedAt"
->;
-
-type UserTable = typeof postgresSchema.users | typeof sqliteSchema.users;
-
 type DrizzleMutationResult = Promise<unknown> | unknown;
 
 type DrizzleLike = {
-  insert(table: UserTable): {
-    values(value: LocalUserWrite | SqliteUserWrite): {
+  insert(table: typeof users): {
+    values(value: LocalUserWrite): {
       onConflictDoUpdate(config: {
-        target: UserTable["clerkUserId"];
-        set: UserUpsertSet | SqliteUserUpsertSet;
+        target: typeof users.clerkUserId;
+        set: UserUpsertSet;
       }): DrizzleMutationResult;
     };
   };
-  update(table: UserTable): {
-    set(value: Pick<UserUpsertSet | SqliteUserUpsertSet, "updatedAt" | "deletedAt">): {
+  update(table: typeof users): {
+    set(value: Pick<UserUpsertSet, "updatedAt" | "deletedAt">): {
       where(condition: unknown): DrizzleMutationResult;
     };
   };
@@ -115,20 +96,8 @@ export async function syncClerkUserDeleted(
 }
 
 export function createDrizzleUserSyncRepository(
-  database: DrizzleLike = createDefaultDatabase(),
+  database: DrizzleLike = createDb(),
 ): UserSyncRepository {
-  if (getDatabaseKind() === "postgres") {
-    return createPostgresUserSyncRepository(database);
-  }
-
-  return createSqliteUserSyncRepository(database);
-}
-
-function createPostgresUserSyncRepository(
-  database: DrizzleLike,
-): UserSyncRepository {
-  const users = postgresSchema.users;
-
   return {
     async upsertUser(user) {
       await database.insert(users).values(user).onConflictDoUpdate({
@@ -145,60 +114,7 @@ function createPostgresUserSyncRepository(
   };
 }
 
-function createDefaultDatabase(): DrizzleLike {
-  if (getDatabaseKind() === "postgres") {
-    return createPostgresDb() as DrizzleLike;
-  }
-
-  return createSqliteDb() as DrizzleLike;
-}
-
-function createSqliteUserSyncRepository(
-  database: DrizzleLike,
-): UserSyncRepository {
-  const users = sqliteSchema.users;
-
-  return {
-    async upsertUser(user) {
-      const sqliteUser = toSqliteUser(user);
-
-      await database.insert(users).values(sqliteUser).onConflictDoUpdate({
-        target: users.clerkUserId,
-        set: toSqliteUserUpsertSet(sqliteUser),
-      });
-    },
-    async softDeleteUser(clerkUserId, deletedAt) {
-      const deletedAtIso = deletedAt.toISOString();
-
-      await database
-        .update(users)
-        .set({ updatedAt: deletedAtIso, deletedAt: deletedAtIso })
-        .where(eq(users.clerkUserId, clerkUserId));
-    },
-  };
-}
-
 function toUserUpsertSet(user: LocalUserWrite): UserUpsertSet {
-  return {
-    primaryEmail: user.primaryEmail,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    imageUrl: user.imageUrl,
-    updatedAt: user.updatedAt,
-    deletedAt: user.deletedAt,
-  };
-}
-
-function toSqliteUser(user: LocalUserWrite): SqliteUserWrite {
-  return {
-    ...user,
-    createdAt: user.createdAt.toISOString(),
-    updatedAt: user.updatedAt.toISOString(),
-    deletedAt: user.deletedAt?.toISOString() ?? null,
-  };
-}
-
-function toSqliteUserUpsertSet(user: SqliteUserWrite): SqliteUserUpsertSet {
   return {
     primaryEmail: user.primaryEmail,
     firstName: user.firstName,

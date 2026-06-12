@@ -1,18 +1,24 @@
-import { getDatabaseKind } from "./env";
-import { createPostgresDb } from "./postgres/client";
-import { createSqliteDb } from "./sqlite/client";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 
-type DbEnv = {
-  DATABASE_URL?: string;
-  SQLITE_PATH?: string;
-} & Record<string, string | undefined>;
+import { getDatabaseUrl } from "./env";
+import * as schema from "./schema";
 
-export function createDb(env: DbEnv = process.env) {
-  if (getDatabaseKind(env) === "postgres") {
-    return createPostgresDb(env);
-  }
-
-  return createSqliteDb(env);
+export function createDb(databaseUrl = getDatabaseUrl()) {
+  return drizzle(postgres(databaseUrl), { schema });
 }
 
-export const db = createDb();
+type Db = ReturnType<typeof createDb>;
+
+let dbInstance: Db | undefined;
+
+function getDb(): Db {
+  dbInstance ??= createDb();
+  return dbInstance;
+}
+
+export const db = new Proxy({} as Db, {
+  get(_target, property, receiver) {
+    return Reflect.get(getDb(), property, receiver);
+  },
+});
