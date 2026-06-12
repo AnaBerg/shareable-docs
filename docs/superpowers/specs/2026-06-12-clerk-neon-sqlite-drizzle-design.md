@@ -1,32 +1,29 @@
-# Clerk + Neon + SQLite Drizzle Design
+# Clerk + Neon + Local Postgres Drizzle Design
 
 ## Context
 
-This project is a small Next.js 16.2.9 App Router application under `src/app`. It currently has no authentication, database layer, ORM, or deployment-specific storage configuration.
+This project is a Next.js 16.2.9 App Router application under `src/app`. The PR currently adds Clerk authentication, Clerk webhook user sync, Drizzle ORM, Neon Postgres for Vercel, and a SQLite local fallback.
 
-The goal is to introduce:
-
-- Clerk authentication.
-- A local user table synchronized from Clerk through webhooks.
-- Neon Postgres for Vercel deployments.
-- SQLite as the local fallback when no Postgres connection string is configured.
-- Drizzle ORM as the common schema and query layer.
+The local database direction is changing: local development should use a Dockerized Postgres database instead of SQLite. This keeps the local and deployed database dialects the same, removes dual-schema drift, and makes migrations simpler to reason about.
 
 Next.js 16 documentation in `node_modules/next/dist/docs` is authoritative for framework conventions in this repo. In particular, Middleware is now called Proxy, so the Clerk request guard belongs in `src/proxy.ts`, not `src/middleware.ts`.
 
 ## Decisions
 
 - Use Drizzle ORM.
+- Use Postgres as the only database dialect.
 - Use Neon Postgres in Vercel through the Vercel Marketplace or Neon/Vercel integration.
-- Use SQLite locally through `@libsql/client` when `DATABASE_URL` is absent.
+- Use a local Docker Compose Postgres service for development.
+- Remove SQLite, libSQL, SQLite-specific schema, SQLite migration config, and SQLite fallback behavior.
 - Keep Clerk as the source of truth for identity.
 - Keep a local `users` table synchronized from Clerk with `user.created`, `user.updated`, and `user.deleted` webhook events.
 - Soft-delete local users on Clerk deletion by setting `deletedAt` instead of deleting the row.
 - Keep database access out of Proxy because Proxy runs in the Edge runtime and should only perform lightweight auth routing.
+- Use `@t3-oss/env-nextjs` and Zod for typed environment validation.
 
 ## Architecture
 
-The application will have four integration areas:
+The application has four integration areas:
 
 1. Clerk application shell
 
@@ -46,22 +43,46 @@ The application will have four integration areas:
 
 3. Clerk webhook sync
 
-   `src/app/api/webhooks/clerk/route.ts` exposes a public `POST` Route Handler. It uses `verifyWebhook()` from `@clerk/nextjs/webhooks`, then dispatches supported events into a small service such as `src/server/clerk/sync-user.ts`.
+   `src/app/api/webhooks/clerk/route.ts` exposes a public `POST` Route Handler. It uses `verifyWebhook()` from `@clerk/nextjs/webhooks`, then dispatches supported events into `src/server/clerk/user-sync.ts`.
+
+   Event normalization helpers live outside the route file, for example in `src/app/api/webhooks/clerk/event.ts`, so the route file stays focused on verification, dispatch, and responses.
 
    The Route Handler exports `runtime = "nodejs"` to keep database driver expectations explicit.
 
 4. Database layer
 
-   `src/db` contains the schema, connection factory, and typed database exports. Application code should import from this layer instead of importing Drizzle drivers directly.
+   `src/db` contains the Postgres schema, connection factory, typed database exports, and environment helpers. Application code imports from this layer instead of importing Drizzle drivers directly.
 
-   The connection factory chooses:
+   The runtime database URL comes from `DATABASE_URL`. Local development gets that URL from `.env.local`, pointed at the Docker Postgres service. Vercel gets it from Neon integration env vars.
 
-   - Neon/Postgres when `process.env.DATABASE_URL` is set.
-   - SQLite when `process.env.DATABASE_URL` is absent and `process.env.SQLITE_PATH` is set or defaults to `./data/local.db`.
+## Local Postgres
+
+Local development uses `docker-compose.yml` with an official Postgres image. The service should be named `postgres` and expose port `5432` on localhost.
+
+Recommended local settings:
+
+```bash
+POSTGRES_USER=shareable_docs
+POSTGRES_PASSWORD=shareable_docs
+POSTGRES_DB=shareable_docs
+DATABASE_URL=postgres://shareable_docs:shareable_docs@localhost:5432/shareable_docs
+```
+
+The repository should provide scripts for common local database tasks:
+
+```json
+{
+  "db:local:up": "docker compose up -d postgres",
+  "db:local:down": "docker compose down",
+  "db:local:logs": "docker compose logs -f postgres"
+}
+```
+
+No local database data should be committed. If the Compose service uses a bind mount or named volume, the data directory must be ignored.
 
 ## Database Design
 
-Start with a portable users schema that can support documents later:
+Start with a Postgres `users` schema that can support documents later:
 
 - `id`: application-local primary key.
 - `clerkUserId`: unique Clerk user id.
@@ -69,11 +90,11 @@ Start with a portable users schema that can support documents later:
 - `firstName`: nullable text.
 - `lastName`: nullable text.
 - `imageUrl`: nullable text.
-- `createdAt`: timestamp.
-- `updatedAt`: timestamp.
-- `deletedAt`: nullable timestamp.
+- `createdAt`: timestamptz.
+- `updatedAt`: timestamptz.
+- `deletedAt`: nullable timestamptz.
 
-`id` is generated by the application with `crypto.randomUUID()` before insert. This keeps id behavior portable across Postgres and SQLite.
+`id` is generated by the application with `crypto.randomUUID()` before insert. This keeps id generation explicit and independent of database extensions.
 
 Indexes:
 
@@ -84,56 +105,49 @@ The first document-related migration can later reference `users.id` for local re
 
 ## Drizzle Layout
 
-Use a structure that keeps database-specific details contained:
+Use a Postgres-only structure:
 
 ```txt
 src/db/
   index.ts
   client.ts
-  schema/
-    users.ts
-    index.ts
-  dialect/
-    postgres.ts
-    sqlite.ts
+  env.ts
+  env.test.ts
+  schema.ts
 ```
 
 Expected responsibilities:
 
-- `schema/*`: table definitions and relations.
-- `client.ts`: chooses the active driver based on environment.
-- `dialect/postgres.ts`: Neon/Postgres Drizzle client.
-- `dialect/sqlite.ts`: SQLite Drizzle client using `@libsql/client`.
-- `index.ts`: exports `db`, schema, and common types.
+- `schema.ts`: Postgres table definitions and relations.
+- `client.ts`: creates the Neon/Postgres Drizzle client from `DATABASE_URL`.
+- `env.ts`: validates and exposes typed env values plus small helper functions.
+- `index.ts`: exports `db`, schema, and common helpers.
 
-Because Postgres and SQLite have different timestamp and id behavior, the implementation should keep schema differences explicit but aligned. Avoid database features that cannot be represented in both dialects unless the feature is necessary.
+There should be one Drizzle Kit config:
+
+```txt
+drizzle.config.ts
+```
+
+The migration output should be:
+
+```txt
+drizzle/
+```
+
+Old SQLite-specific folders/configs should be removed from the implementation.
 
 ## Migrations
 
-Use two Drizzle Kit config files:
-
-```txt
-drizzle.postgres.config.ts
-drizzle.sqlite.config.ts
-```
-
-Both configs point to the same logical schema files and output to separate migration folders, for example:
-
-```txt
-drizzle/postgres/
-drizzle/sqlite/
-```
+Use a single Postgres migration pipeline.
 
 Recommended scripts:
 
 ```json
 {
-  "db:generate:pg": "drizzle-kit generate --config=drizzle.postgres.config.ts",
-  "db:migrate:pg": "drizzle-kit migrate --config=drizzle.postgres.config.ts",
-  "db:generate:sqlite": "drizzle-kit generate --config=drizzle.sqlite.config.ts",
-  "db:migrate:sqlite": "drizzle-kit migrate --config=drizzle.sqlite.config.ts",
-  "db:studio": "drizzle-kit studio",
-  "typecheck": "tsc --noEmit"
+  "db:generate": "drizzle-kit generate --config=drizzle.config.ts",
+  "db:migrate": "drizzle-kit migrate --config=drizzle.config.ts",
+  "db:studio": "drizzle-kit studio --config=drizzle.config.ts"
 }
 ```
 
@@ -151,7 +165,8 @@ Local development:
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=...
 CLERK_SECRET_KEY=...
 CLERK_WEBHOOK_SIGNING_SECRET=...
-SQLITE_PATH=./data/local.db
+DATABASE_URL=postgres://shareable_docs:shareable_docs@localhost:5432/shareable_docs
+DATABASE_URL_UNPOOLED=
 ```
 
 Vercel production and preview:
@@ -167,9 +182,10 @@ DATABASE_URL_UNPOOLED=...
 Rules:
 
 - `.env*` files stay uncommitted.
+- `.env.example` documents the required keys.
 - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` is the only Clerk key intended for browser exposure.
 - `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SIGNING_SECRET`, and database URLs are server-only secrets.
-- SQLite is a development fallback, not a production database on Vercel.
+- `DATABASE_URL` is required for runtime database access in all environments.
 
 ## Vercel + Neon Setup
 
@@ -225,8 +241,8 @@ This is necessary because Clerk webhooks are asynchronous and cannot be treated 
 
 ## Error Handling
 
-- Missing production `DATABASE_URL` should fail fast during server database initialization.
-- Missing local `SQLITE_PATH` may default to `./data/local.db`.
+- Missing `DATABASE_URL` should fail fast during server database initialization.
+- Missing Postgres migration URL should fail fast during Drizzle config loading.
 - Webhook verification failures return `400`.
 - Database write failures return `500` so Clerk/Svix retries the event.
 - Unsupported webhook events return `200` to avoid retry loops.
@@ -236,8 +252,9 @@ This is necessary because Clerk webhooks are asynchronous and cannot be treated 
 
 Automated checks should cover:
 
-- Database client selection chooses Postgres when `DATABASE_URL` exists.
-- Database client selection chooses SQLite when `DATABASE_URL` is absent.
+- Environment validation exposes `DATABASE_URL`.
+- Missing `DATABASE_URL` fails fast for runtime DB access.
+- Migration URL selection prefers `DATABASE_URL_UNPOOLED`.
 - Clerk user payload mapping extracts stable fields.
 - `user.created` and `user.updated` perform idempotent upserts.
 - `user.deleted` performs a soft delete.
@@ -245,10 +262,11 @@ Automated checks should cover:
 
 Manual verification checklist:
 
-- Run SQLite migration locally.
-- Start the app without `DATABASE_URL`.
+- Start local Postgres with `bun run db:local:up`.
+- Set `DATABASE_URL` to the local Docker Postgres URL.
+- Run Postgres migrations locally.
 - Create or send a Clerk test `user.created` event through the Clerk Dashboard using a tunnel.
-- Confirm the user exists in SQLite.
+- Confirm the user exists in local Postgres.
 - Configure Neon in Vercel and verify env vars are present.
 - Run Postgres migrations against Neon.
 - Deploy to Vercel.
@@ -259,7 +277,9 @@ General project checks:
 
 - `bun run lint`
 - `bun run typecheck`
+- `bun run test`
 - `bun run build`
+- `bun run db:generate`
 
 ## Non-Goals
 
@@ -267,12 +287,15 @@ General project checks:
 - Implementing organizations or teams in Clerk.
 - Implementing role-based authorization beyond route protection hooks.
 - Replacing Clerk with Neon Auth.
-- Using SQLite in Vercel production.
+- Supporting SQLite, libSQL, or a non-Postgres local database.
 - Adding a repository abstraction before the app has enough domain logic to justify it.
 
 ## Implementation Constraints
 
-- Use `@libsql/client` for local SQLite.
+- Use Postgres only.
+- Use Docker Compose for local Postgres.
+- Use `@neondatabase/serverless` and `drizzle-orm/neon-http` for runtime Postgres access.
+- Use `@t3-oss/env-nextjs` and Zod for typed env validation.
 - Generate local user ids with `crypto.randomUUID()`.
 - Keep generated migration snapshots under source control.
 
@@ -286,8 +309,9 @@ General project checks:
 - Neon Vercel connection guidance: https://neon.com/docs/guides/vercel-connection-methods
 - Vercel Marketplace storage docs: https://vercel.com/docs/marketplace-storage
 - Drizzle database connection docs: https://orm.drizzle.team/docs/connect-overview
-- Drizzle SQLite docs: https://orm.drizzle.team/docs/get-started-sqlite
 - Drizzle config docs: https://orm.drizzle.team/docs/drizzle-config-file
+- T3 Env Next.js docs: https://env.t3.gg/docs/nextjs
+- Docker Postgres image docs: https://hub.docker.com/_/postgres
 - Local Next.js docs read from `node_modules/next/dist/docs/01-app/01-getting-started/16-proxy.md`
 - Local Next.js docs read from `node_modules/next/dist/docs/01-app/01-getting-started/15-route-handlers.md`
 - Local Next.js docs read from `node_modules/next/dist/docs/01-app/02-guides/environment-variables.md`
