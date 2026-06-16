@@ -46,7 +46,7 @@ export function isApiError(error: unknown): error is ApiError {
 }
 
 export function validationError(message = "Invalid request", details?: unknown) {
-  return apiError(400, "validation_error", message, details);
+  return apiError(422, "validation_error", message, details);
 }
 
 export function unauthorizedError(message = "Authentication required") {

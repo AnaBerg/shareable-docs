@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { parseJsonBody } from "./request-body";
+import { parseJsonBody } from "./parse-json-body";
 
 describe("parseJsonBody", () => {
   it("parses JSON and maps malformed bodies to validation errors", async () => {
@@ -10,6 +10,6 @@ describe("parseJsonBody", () => {
 
     await expect(
       parseJsonBody(new Request("https://app.test", { method: "POST", body: "{" })),
-    ).rejects.toMatchObject({ status: 400, code: "validation_error" });
+    ).rejects.toMatchObject({ status: 422, code: "validation_error" });
   });
 });

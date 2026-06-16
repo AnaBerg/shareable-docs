@@ -26,7 +26,7 @@ describe("createApiContext", () => {
     }
   });
 
-  it("returns 403 when the Clerk user has no active local user row", async () => {
+  it("returns 409 when the Clerk user has no active local user row", async () => {
     const { auth } = await import("@clerk/nextjs/server");
     vi.mocked(auth).mockResolvedValue({ userId: "clerk_123" } as never);
 
@@ -35,7 +35,7 @@ describe("createApiContext", () => {
 
     expect(result.ok).toBe(false);
     if (!result.ok) {
-      expect(result.response.status).toBe(403);
+      expect(result.response.status).toBe(409);
       await expect(result.response.json()).resolves.toMatchObject({
         error: { code: "user_not_synced" },
       });

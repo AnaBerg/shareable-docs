@@ -13,6 +13,13 @@ describe("findDocumentById", () => {
     await expect(findDocumentById(db, "doc_1")).resolves.toBe(document);
     expect(chain.limit).toHaveBeenCalledWith(1);
   });
+
+  it("returns null when no document matches", async () => {
+    const chain = selectLimitChain([]);
+    const db = { select: vi.fn(() => chain) } as unknown as DocumentsDatabase;
+
+    await expect(findDocumentById(db, "missing")).resolves.toBeNull();
+  });
 });
 
 function selectLimitChain(rows: unknown[]) {

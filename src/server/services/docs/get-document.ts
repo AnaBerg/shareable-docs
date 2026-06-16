@@ -3,9 +3,8 @@ import { findLatestVersion } from "@/server/repositories/docs/find-latest-versio
 import { findVersion } from "@/server/repositories/docs/find-version";
 import type { ApiContext } from "@/server/foundation/context";
 import { forbiddenError, notFoundError } from "@/server/foundation/errors";
+import { resolveDocumentAccess } from "@/server/foundation/helpers/resolve-document-access";
 import type { DocumentRouteParams, GetDocumentQuery } from "@/types/docs";
-
-import { resolveDocumentAccess } from "./resolve-access";
 
 export async function getDocument(
   ctx: ApiContext,

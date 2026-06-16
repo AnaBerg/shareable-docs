@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { searchParamsToObject } from "./query";
+import { searchParamsToObject } from "./search-params";
 
 describe("searchParamsToObject", () => {
   it("preserves duplicate query parameters", () => {

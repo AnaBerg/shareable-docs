@@ -2,9 +2,8 @@ import { findDocumentById } from "@/server/repositories/docs/find-document-by-id
 import { upsertDocumentShares } from "@/server/repositories/docs/upsert-shares";
 import type { ApiContext } from "@/server/foundation/context";
 import { forbiddenError, notFoundError } from "@/server/foundation/errors";
+import { resolveDocumentAccess } from "@/server/foundation/helpers/resolve-document-access";
 import type { DocumentRouteParams, ShareDocumentRequest } from "@/types/docs";
-
-import { resolveDocumentAccess } from "./resolve-access";
 
 export async function shareDocument(
   ctx: ApiContext,
@@ -17,8 +16,8 @@ export async function shareDocument(
   }
 
   const access = await resolveDocumentAccess(ctx, document);
-  if (!access) {
-    throw forbiddenError("Document access denied");
+  if (access !== "owned") {
+    throw forbiddenError("Only document owners can share");
   }
 
   const shares = await upsertDocumentShares(ctx.db, {

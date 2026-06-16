@@ -66,7 +66,7 @@ describe("docs HTTP handlers", () => {
       version: { versionNumber: 1 },
     });
 
-    const { createDocumentHandler } = await import("./docs");
+    const { createDocumentHandler } = await import(".");
     const response = await createDocumentHandler(
       jsonRequest("https://app.test/api/docs", {
         name: " Report ",
@@ -89,7 +89,7 @@ describe("docs HTTP handlers", () => {
   it("lists documents and rejects invalid access filters", async () => {
     serviceMocks.listDocuments.mockResolvedValue({ documents: [] });
 
-    const { listDocumentsHandler } = await import("./docs");
+    const { listDocumentsHandler } = await import(".");
     const validResponse = await listDocumentsHandler(
       new Request("https://app.test/api/docs?access=shared"),
     );
@@ -102,7 +102,7 @@ describe("docs HTTP handlers", () => {
       expect.anything(),
       { access: "shared" },
     );
-    expect(invalidResponse.status).toBe(400);
+    expect(invalidResponse.status).toBe(422);
   });
 
   it("gets a document by awaiting route params and defaulting to latest version", async () => {
@@ -124,7 +124,7 @@ describe("docs HTTP handlers", () => {
       latestVersion: { versionNumber: 2 },
     });
 
-    const { getDocumentHandler } = await import("./docs");
+    const { getDocumentHandler } = await import(".");
     const response = await getDocumentHandler(
       new Request("https://app.test/api/docs/01HZXJK8JHX7QY9N7K6X8Y2W0A"),
       { params: Promise.resolve({ id: "01HZXJK8JHX7QY9N7K6X8Y2W0A" }) },
@@ -149,7 +149,7 @@ describe("docs HTTP handlers", () => {
       forbiddenError("Only the document owner can update it"),
     );
 
-    const { updateDocumentHandler } = await import("./docs");
+    const { updateDocumentHandler } = await import(".");
     const response = await updateDocumentHandler(
       jsonRequest("https://app.test/api/docs/01HZXJK8JHX7QY9N7K6X8Y2W0A", { html: "<p>v2</p>" }, "PUT"),
       { params: Promise.resolve({ id: "01HZXJK8JHX7QY9N7K6X8Y2W0A" }) },
@@ -171,7 +171,7 @@ describe("docs HTTP handlers", () => {
       ],
     });
 
-    const { shareDocumentHandler } = await import("./docs");
+    const { shareDocumentHandler } = await import(".");
     const response = await shareDocumentHandler(
       jsonRequest("https://app.test/api/docs/share/01HZXJK8JHX7QY9N7K6X8Y2W0A", {
         emails: [" Reader@Example.com ", "reader@example.com", "reviewer@example.com"],

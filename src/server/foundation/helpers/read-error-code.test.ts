@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { readErrorCode } from "./error-code";
+import { readErrorCode } from "./read-error-code";
 
 describe("readErrorCode", () => {
   it("reads error code from JSON responses and ignores invalid bodies", async () => {

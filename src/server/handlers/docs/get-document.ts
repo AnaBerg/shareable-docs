@@ -1,12 +1,10 @@
 import { getDocument } from "@/server/services/docs/get-document";
+import { searchParamsToObject } from "@/server/foundation/helpers/search-params";
+import { parseWithSchema } from "@/server/foundation/helpers/validation";
+import { jsonResponse } from "@/server/foundation/responses";
 import { documentRouteParamsSchema, getDocumentQuerySchema } from "@/types/docs";
 
-import {
-  jsonResponse,
-  parseWithSchema,
-  searchParamsToObject,
-  withApiHandler,
-} from "../api";
+import { withApiHandler } from "../api";
 
 export const getDocumentHandler = withApiHandler<{ id: string }>(
   async ({ request, ctx, params }) => {

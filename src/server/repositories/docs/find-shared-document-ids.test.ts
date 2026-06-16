@@ -12,9 +12,17 @@ describe("findSharedDocumentIds", () => {
     };
     const db = { select: vi.fn(() => chain) } as unknown as DocumentsDatabase;
 
-    await expect(findSharedDocumentIds(db, "reader@example.com")).resolves.toEqual([
+    await expect(findSharedDocumentIds(db, " Reader@Example.com ")).resolves.toEqual([
       "doc_1",
       "doc_2",
     ]);
+    expect(chain.where).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns an empty list for blank emails without querying", async () => {
+    const db = { select: vi.fn() } as unknown as DocumentsDatabase;
+
+    await expect(findSharedDocumentIds(db, " ")).resolves.toEqual([]);
+    expect(db.select).not.toHaveBeenCalled();
   });
 });

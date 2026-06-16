@@ -1,12 +1,10 @@
 import { createDocument } from "@/server/services/docs/create-document";
+import { parseJsonBody } from "@/server/foundation/helpers/parse-json-body";
+import { parseWithSchema } from "@/server/foundation/helpers/validation";
+import { jsonResponse } from "@/server/foundation/responses";
 import { createDocumentRequestSchema } from "@/types/docs";
 
-import {
-  jsonResponse,
-  parseJsonBody,
-  parseWithSchema,
-  withApiHandler,
-} from "../api";
+import { withApiHandler } from "../api";
 
 export const createDocumentHandler = withApiHandler(async ({ request, ctx }) => {
   const input = parseWithSchema(

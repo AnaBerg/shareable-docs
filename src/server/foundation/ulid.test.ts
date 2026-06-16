@@ -10,6 +10,8 @@ describe("createUlid", () => {
       return array;
     });
 
-    expect(createUlid(0)).toMatch(/^[0-9A-HJKMNP-TV-Z]{26}$/);
+    const ulid = createUlid(0);
+    expect(ulid).toMatch(/^[0-9A-HJKMNP-TV-Z]{26}$/);
+    expect(ulid.startsWith("0000000000")).toBe(true);
   });
 });

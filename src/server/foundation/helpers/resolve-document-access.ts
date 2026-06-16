@@ -10,10 +10,12 @@ export async function resolveDocumentAccess(
     return "owned";
   }
 
-  if (
-    ctx.userEmail !== null &&
-    (await isSharedWithEmail(ctx.db, document.id, ctx.userEmail))
-  ) {
+  const hasSharedAccess =
+    ctx.userEmail !== null
+      ? await isSharedWithEmail(ctx.db, document.id, ctx.userEmail)
+      : false;
+
+  if (hasSharedAccess) {
     return "shared";
   }
 

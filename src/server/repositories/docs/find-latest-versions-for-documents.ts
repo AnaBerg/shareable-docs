@@ -1,4 +1,4 @@
-import { desc, inArray } from "drizzle-orm";
+import { and, eq, inArray, max } from "drizzle-orm";
 
 import { documentVersions } from "@/db";
 import type { DocumentsDatabase } from "@/types/docs-repository";
@@ -11,18 +11,31 @@ export async function findLatestVersionsForDocuments(
     return new Map();
   }
 
+  const latestVersionNumbers = db
+    .select({
+      documentId: documentVersions.documentId,
+      versionNumber: max(documentVersions.versionNumber).as("version_number"),
+    })
+    .from(documentVersions)
+    .where(inArray(documentVersions.documentId, documentIds))
+    .groupBy(documentVersions.documentId)
+    .as("latest_version_numbers");
+
   const rows = await db
     .select()
     .from(documentVersions)
-    .where(inArray(documentVersions.documentId, documentIds))
-    .orderBy(desc(documentVersions.versionNumber));
+    .innerJoin(
+      latestVersionNumbers,
+      and(
+        eq(documentVersions.documentId, latestVersionNumbers.documentId),
+        eq(documentVersions.versionNumber, latestVersionNumbers.versionNumber),
+      ),
+    );
 
-  const latestVersions = new Map<string, (typeof rows)[number]>();
+  const latestVersions = new Map<string, typeof documentVersions.$inferSelect>();
 
-  for (const version of rows) {
-    if (!latestVersions.has(version.documentId)) {
-      latestVersions.set(version.documentId, version);
-    }
+  for (const row of rows) {
+    latestVersions.set(row.document_versions.documentId, row.document_versions);
   }
 
   return latestVersions;

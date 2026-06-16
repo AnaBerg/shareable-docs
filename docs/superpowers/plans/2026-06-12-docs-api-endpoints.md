@@ -4,7 +4,7 @@
 
 **Goal:** Build versioned HTML document APIs with shared endpoint foundation, authenticated API context, Drizzle persistence, Zod contracts, and tests.
 
-**Architecture:** Next.js `src/app/api/**/route.ts` files stay thin and delegate to HTTP handlers in `src/server/handlers/docs.ts`. Generic API infrastructure lives in `src/server/foundation` and `src/server/handlers/api.ts`; business rules live in `src/server/services/docs`; Drizzle queries live in `src/server/repositories/docs`; Zod contracts and shared document types live in `src/types/docs.ts`.
+**Architecture:** Next.js `src/app/api/**/route.ts` files stay thin and delegate to HTTP handlers in `src/server/handlers/docs/index.ts`. Generic API infrastructure lives in `src/server/foundation` and `src/server/handlers/api.ts`; business rules live in `src/server/services/docs`; Drizzle queries live in `src/server/repositories/docs`; Zod contracts and shared document types live in `src/types/docs.ts`.
 
 **Tech Stack:** Next.js 16 Route Handlers, Clerk, Drizzle ORM, Postgres, Zod 4, Vitest, Bun.
 
@@ -157,13 +157,13 @@ Write tests that prove:
 ```ts
 // context.test.ts
 // - unauthenticated Clerk auth returns a 401 Response
-// - authenticated Clerk user without local active row returns a 403 Response
+// - authenticated Clerk user without local active row returns a 409 Response
 // - active local user returns ctx.user, ctx.userEmail, and ctx.db
 
 // api.test.ts
 // - withApiHandler converts API error objects into the expected JSON error response
 // - withApiHandler converts unexpected errors into generic 500 JSON
-// - parseJsonBody returns validation_error for malformed JSON
+// - parseJsonBody returns 422 validation_error for malformed JSON
 // - parseWithSchema does not include submitted HTML in validation details
 ```
 
@@ -190,7 +190,7 @@ export type ApiError = {
 };
 ```
 
-Add helper constructors for validation, unauthorized, forbidden, not found, conflict, and internal errors. Implement `logs.ts` as a thin wrapper around `console.info` and `console.error`. Implement `context.ts` with `createApiContext(database = db)` and `auth()` from Clerk. Implement `api.ts` with JSON response helpers, request id extraction, safe JSON parsing, Zod parsing, and `withApiHandler`.
+Add helper constructors for validation, unauthorized, forbidden, not found, conflict, and internal errors. Implement `logs.ts` as a canonical structured request event wrapper around `console.info`. Implement `context.ts` with `createApiContext(database = db)` and `auth()` from Clerk. Implement foundation helpers for JSON responses, request id extraction, safe JSON parsing, and Zod parsing. Implement `api.ts` with `withApiHandler`.
 
 - [ ] **Step 4: Verify foundation passes**
 
@@ -220,7 +220,7 @@ Create service tests using an in-memory repository fake. Cover:
 // shared email can read
 // shared email cannot update
 // owner can update and gets latestVersion + 1
-// owner and shared user can share
+// only owner can share
 // listDocuments filters all, owned, and shared
 // user without primary email gets no shared documents
 ```
@@ -259,8 +259,8 @@ Expected: pass.
 ## Task 5: HTTP Handlers And Next Route Adapters
 
 **Files:**
-- Create: `src/server/handlers/docs.ts`
-- Create: `src/server/handlers/docs.test.ts`
+- Create: `src/server/handlers/docs/index.ts`
+- Create: `src/server/handlers/docs/index.test.ts`
 - Create: `src/app/api/docs/route.ts`
 - Create: `src/app/api/docs/[id]/route.ts`
 - Create: `src/app/api/docs/share/[id]/route.ts`
@@ -279,13 +279,13 @@ Write handler tests with mocked document services. Cover:
 
 - [ ] **Step 2: Verify handler tests fail**
 
-Run: `bun run test src/server/handlers/docs.test.ts`
+Run: `bun run test src/server/handlers/docs`
 
 Expected: fail because handlers do not exist.
 
 - [ ] **Step 3: Implement HTTP handlers**
 
-Implement named exports in `src/server/handlers/docs.ts`, for example:
+Implement named exports in `src/server/handlers/docs/index.ts`, for example:
 
 ```ts
 export const POST = withApiHandler(async ({ request, ctx }) => {
@@ -299,11 +299,11 @@ Use Next.js 16 async route params by awaiting `routeContext.params` inside the h
 
 - [ ] **Step 4: Implement route adapters**
 
-Each `src/app/api/docs/**/route.ts` should export `runtime = "nodejs"` and delegate to the matching function from `src/server/handlers/docs.ts`.
+Each `src/app/api/docs/**/route.ts` should export `runtime = "nodejs"` and delegate to the matching function from `src/server/handlers/docs/index.ts`.
 
 - [ ] **Step 5: Verify handlers pass**
 
-Run: `bun run test src/server/handlers/docs.test.ts`
+Run: `bun run test src/server/handlers/docs`
 
 Expected: pass.
 

@@ -15,8 +15,9 @@ export async function listAccessibleDocuments(
   input: ListDocumentsInput,
 ): Promise<DocumentListItem[]> {
   const ownedCondition = eq(documents.ownerUserId, input.ownerUserId);
+  const shouldResolveSharedIds = input.access !== "owned";
   const sharedDocumentIds =
-    input.sharedWithEmail === null
+    !shouldResolveSharedIds || input.sharedWithEmail === null
       ? []
       : await findSharedDocumentIds(db, input.sharedWithEmail);
 

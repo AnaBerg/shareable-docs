@@ -13,7 +13,7 @@ import {
 
 describe("API errors", () => {
   it("creates functional API error objects", () => {
-    expect(validationError()).toMatchObject({ status: 400, code: "validation_error" });
+    expect(validationError()).toMatchObject({ status: 422, code: "validation_error" });
     expect(unauthorizedError()).toMatchObject({ status: 401, code: "unauthorized" });
     expect(forbiddenError()).toMatchObject({ status: 403, code: "forbidden" });
     expect(notFoundError()).toMatchObject({ status: 404, code: "not_found" });

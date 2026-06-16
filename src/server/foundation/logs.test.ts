@@ -22,10 +22,11 @@ describe("API logs", () => {
 
     expect(info).toHaveBeenCalledWith(
       expect.objectContaining({
-        event: "api_request",
-        service: "shareable-docs",
-        requestId: "req_1",
-        userId: "user_1",
+        event: "api.request",
+        schemaVersion: 1,
+        service: expect.objectContaining({ name: "shareable-docs" }),
+        request: expect.objectContaining({ id: "req_1", path: "/api/docs" }),
+        user: { id: "user_1" },
       }),
     );
   });

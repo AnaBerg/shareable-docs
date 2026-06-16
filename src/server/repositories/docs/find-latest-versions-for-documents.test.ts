@@ -12,22 +12,34 @@ describe("findLatestVersionsForDocuments", () => {
     expect(db.select).not.toHaveBeenCalled();
   });
 
-  it("keeps the first ordered version per document", async () => {
-    const rows = [
+  it("maps latest version rows selected by the database", async () => {
+    const versions = [
       { id: "v2", documentId: "doc_1", versionNumber: 2 },
-      { id: "v1", documentId: "doc_1", versionNumber: 1 },
       { id: "other", documentId: "doc_2", versionNumber: 1 },
     ];
-    const chain = {
-      from: vi.fn(() => chain),
-      where: vi.fn(() => chain),
-      orderBy: vi.fn(async () => rows),
+    const latestSubquery = {
+      from: vi.fn(() => latestSubquery),
+      where: vi.fn(() => latestSubquery),
+      groupBy: vi.fn(() => latestSubquery),
+      as: vi.fn(() => ({ documentId: "document_id", versionNumber: "version_number" })),
     };
-    const db = { select: vi.fn(() => chain) } as unknown as DocumentsDatabase;
+    const rows = versions.map((version) => ({ document_versions: version }));
+    const latestRowsQuery = {
+      from: vi.fn(() => latestRowsQuery),
+      innerJoin: vi.fn(async () => rows),
+    };
+    const db = {
+      select: vi
+        .fn()
+        .mockReturnValueOnce(latestSubquery)
+        .mockReturnValueOnce(latestRowsQuery),
+    } as unknown as DocumentsDatabase;
 
     const latest = await findLatestVersionsForDocuments(db, ["doc_1", "doc_2"]);
 
-    expect(latest.get("doc_1")).toBe(rows[0]);
-    expect(latest.get("doc_2")).toBe(rows[2]);
+    expect(latestSubquery.groupBy).toHaveBeenCalledTimes(1);
+    expect(latestRowsQuery.innerJoin).toHaveBeenCalledTimes(1);
+    expect(latest.get("doc_1")).toBe(versions[0]);
+    expect(latest.get("doc_2")).toBe(versions[1]);
   });
 });

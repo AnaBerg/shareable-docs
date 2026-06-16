@@ -11,6 +11,13 @@ describe("isSharedWithEmail", () => {
 
     await expect(isSharedWithEmail(db, "doc_1", "reader@example.com")).resolves.toBe(true);
   });
+
+  it("returns false when no share exists", async () => {
+    const chain = selectLimitChain([]);
+    const db = { select: vi.fn(() => chain) } as unknown as DocumentsDatabase;
+
+    await expect(isSharedWithEmail(db, "doc_1", "reader@example.com")).resolves.toBe(false);
+  });
 });
 
 function selectLimitChain(rows: unknown[]) {

@@ -14,6 +14,14 @@ describe("findLatestVersion", () => {
     expect(chain.orderBy).toHaveBeenCalledTimes(1);
     expect(chain.limit).toHaveBeenCalledWith(1);
   });
+
+  it("returns null when no versions exist", async () => {
+    const db = {
+      select: vi.fn(() => selectOrderedLimitChain([])),
+    } as unknown as DocumentsDatabase;
+
+    await expect(findLatestVersion(db, "doc_1")).resolves.toBeNull();
+  });
 });
 
 function selectOrderedLimitChain(rows: unknown[]) {

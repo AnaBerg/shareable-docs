@@ -15,7 +15,7 @@ The new documents API must store HTML documents, support multiple immutable vers
 - Preserve every document version instead of overwriting HTML.
 - Authorize reads for owners and users whose primary email was shared.
 - Authorize updates only for owners.
-- Authorize sharing for any user who currently has access to the document.
+- Authorize sharing only for the document owner.
 - Validate API request contracts and database write contracts with Zod.
 - Centralize request user resolution in a reusable API context helper.
 - Create a reusable endpoint foundation for error handling, request parsing, database access, structured logs, and business-logic dispatch.
@@ -40,7 +40,7 @@ The helper should build an `ApiContext` for every protected API request. It shou
 - Load the active local `users` row by `clerkUserId`.
 - Normalize and expose the local user's primary email when present.
 - Return a clear `401` response when no Clerk session exists.
-- Return a clear `403` response when a Clerk session exists but the local user row has not been synchronized yet.
+- Return a clear `409` response when a Clerk session exists but the local user row has not been synchronized yet.
 - Expose the local user as `ctx.user`.
 - Expose the local user's normalized primary email as `ctx.userEmail`.
 - Expose the Drizzle database handle as `ctx.db`.
@@ -71,7 +71,7 @@ Suggested files:
 
 ```txt
 src/server/handlers/api.ts
-src/server/handlers/docs.ts
+src/server/handlers/docs/index.ts
 src/server/handlers/docs/*.ts
 src/server/foundation/context.ts
 src/server/foundation/errors.ts
@@ -109,14 +109,14 @@ Dynamic route params should still be awaited and validated by the endpoint or re
 
 `src/server/foundation/errors.ts` should define typed application errors, for example `ApiError`, with a status code, stable error code, safe message, and optional validation details. Business logic should throw these typed errors for expected failures such as forbidden access, missing documents, validation failures, and local user sync conflicts.
 
-The handler layer should provide JSON helpers for success and error responses, either in `src/server/handlers/api.ts` or a sibling file under `src/server/handlers`. Response helpers should produce one consistent envelope for errors and should avoid leaking stack traces, SQL details, Clerk secrets, or submitted HTML.
+The foundation layer should provide JSON helpers for success and error responses under `src/server/foundation`. Response helpers should produce one consistent envelope for errors and should avoid leaking stack traces, SQL details, Clerk secrets, or submitted HTML.
 
 ### Request parsing
 
-`src/server/handlers/api.ts`, or a sibling file under `src/server/handlers`, should contain reusable helpers for:
+`src/server/foundation/helpers` should contain reusable helpers for:
 
 - Reading JSON request bodies safely.
-- Returning `400` for malformed JSON.
+- Returning `422` for malformed JSON.
 - Validating bodies, query strings, and route params with Zod.
 - Converting `URLSearchParams` to plain objects before validation.
 
@@ -130,7 +130,7 @@ Repository modules under `src/server/repositories/docs` should own Drizzle queri
 
 ### Logging
 
-`src/server/foundation/logs.ts` should expose a minimal structured logger wrapper around `console`. Logs should include:
+`src/server/foundation/logs.ts` should expose a minimal structured logger wrapper around `console`. Logs should be emitted as one canonical wide event per request and include:
 
 - `requestId`.
 - HTTP method and pathname.
@@ -388,9 +388,9 @@ Behavior:
 2. Validate route params and body with Zod.
 3. Normalize emails by trimming and lowercasing.
 4. Remove duplicate emails from the request.
-5. Verify the current user can access the document.
+5. Verify the current user owns the document.
 6. Return `404` if the document does not exist.
-7. Return `403` if the document exists but the current user cannot access it.
+7. Return `403` if the document exists but the current user is not the owner.
 8. Insert access grants idempotently.
 9. Return `200`.
 
@@ -408,9 +408,9 @@ Sharing is document-level. A shared email can read every existing and future ver
 ## Authorization Rules
 
 - Unauthenticated requests return `401`.
-- Authenticated requests without a local `users` row return `403`.
+- Authenticated requests without a local `users` row return `409`.
 - Owners can read, update, list, and share their documents.
-- Shared users can read, list, and share documents shared with their primary email.
+- Shared users can read and list documents shared with their primary email.
 - Shared users cannot update documents.
 - A user with no primary email can still own documents but cannot receive email-based shares until their local `primaryEmail` is present.
 - Soft-deleted users should not be loaded by `ApiContext`.
@@ -431,11 +431,11 @@ Use JSON error bodies consistently:
 
 Recommended status codes:
 
-- `400`: malformed JSON, invalid route param, invalid query string, invalid body.
+- `422`: malformed JSON, invalid route param, invalid query string, invalid body.
 - `401`: missing Clerk session.
 - `403`: authenticated user lacks access.
 - `404`: document or version not found.
-- `409`: a concurrent version insert conflicts after retry handling.
+- `409`: local user has not been synchronized yet, or a concurrent version insert conflicts after retry handling.
 - `500`: unexpected server/database error.
 
 Validation errors should not echo submitted HTML.
@@ -449,7 +449,7 @@ src/app/api/docs/route.ts
 src/app/api/docs/[id]/route.ts
 src/app/api/docs/share/[id]/route.ts
 src/server/handlers/api.ts
-src/server/handlers/docs.ts
+src/server/handlers/docs/index.ts
 src/server/foundation/context.ts
 src/server/foundation/errors.ts
 src/server/foundation/logs.ts
@@ -479,15 +479,15 @@ Test the contract layer:
 Test the API context helper:
 
 - Returns `401` when Clerk has no authenticated user.
-- Returns `403` when a Clerk user exists but no active local user row exists.
+- Returns `409` when a Clerk user exists but no active local user row exists.
 - Returns `ApiContext` with local user and normalized email when present.
 
 Test the API foundation:
 
 - Handler wrapper catches typed `ApiError` instances and returns the expected status and JSON error envelope.
 - Handler wrapper catches unexpected errors, logs them through `src/server/foundation/logs.ts`, and returns a generic `500`.
-- Request parser in the handler layer returns `400` for malformed JSON.
-- Zod request helpers in the handler layer format validation failures without echoing submitted HTML.
+- Request parser in the foundation helper layer returns `422` for malformed JSON.
+- Zod request helpers in the foundation helper layer format validation failures without echoing submitted HTML.
 - Completion logs include request id, method, pathname, status, duration, and user id when available.
 
 Test the document service:
@@ -498,7 +498,7 @@ Test the document service:
 - Owner can read and update.
 - Shared email can read.
 - Shared email cannot update.
-- Owner and shared user can share.
+- Only owners can share.
 - List returns owned, shared, or all based on the filter.
 - User without primary email gets no shared documents.
 
@@ -516,18 +516,18 @@ Test HTTP handlers with mocked service/context dependencies where useful:
 2. Generate a Postgres migration with `bun run db:generate`.
 3. Add the shared API foundation: errors, logging, and API context under `src/server/foundation`.
 4. Add foundation tests before implementation.
-5. Add the shared handler wrapper, response helpers, and request parsing under `src/server/handlers`.
+5. Add the shared handler wrapper under `src/server/handlers` and response/request parsing helpers under `src/server/foundation`.
 6. Add Zod contracts and document types in `src/types/docs.ts`.
 7. Add repository and service tests before implementation.
 8. Add repository and service implementation under `src/server/repositories/docs` and `src/server/services/docs`.
 9. Add handler tests before each handler implementation.
-10. Add thin Next.js Route Handlers in `src/app/api/docs/**/route.ts` that delegate to `src/server/handlers/docs.ts`.
+10. Add thin Next.js Route Handlers in `src/app/api/docs/**/route.ts` that delegate to `src/server/handlers/docs/index.ts`.
 11. Run `bun run test`, `bun run typecheck`, and `bun run lint`.
 
 ## Open Decisions Resolved
 
 - Sharing is stored by normalized email, not by `userId`, so recipients do not need accounts before access is granted.
-- Any user with document access can share the document onward.
+- Only document owners can share the document onward.
 - Updating a document creates a new version and does not mutate existing version rows.
 - Reading without `version` returns the latest version.
 - Listing defaults to all accessible documents.

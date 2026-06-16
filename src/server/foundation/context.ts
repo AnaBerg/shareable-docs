@@ -1,14 +1,14 @@
 import { auth } from "@clerk/nextjs/server";
 
 import { db, type User } from "@/db";
-import { normalizeEmail } from "@/server/foundation/email";
+import { normalizeEmail } from "@/server/foundation/helpers/email";
 import {
   findActiveUserByClerkId,
   type UserLookupDb,
 } from "@/server/repositories/users/find-active-user-by-clerk-id";
 import { apiErrorResponse } from "@/server/foundation/responses";
 
-import { forbiddenError, unauthorizedError } from "./errors";
+import { conflictError, unauthorizedError } from "./errors";
 
 type Db = typeof db;
 
@@ -42,7 +42,7 @@ export async function createApiContext(
     return {
       ok: false,
       response: apiErrorResponse(
-        forbiddenError(
+        conflictError(
           "Authenticated user has not been synchronized yet",
           "user_not_synced",
         ),

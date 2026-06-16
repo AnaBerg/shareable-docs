@@ -39,6 +39,20 @@ describe("listDocumentsHandler", () => {
     );
 
     expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      documents: [
+        {
+          id: "01HZXJK8JHX7QY9N7K6X8Y2W0A",
+          ownerUserId: "user_1",
+          name: "Report",
+          description: null,
+          access: "owned",
+          latestVersion: 1,
+          createdAt: now.toISOString(),
+          updatedAt: now.toISOString(),
+        },
+      ],
+    });
     expect(service.listDocuments).toHaveBeenCalledWith(ctx, { access: "owned" });
   });
 });

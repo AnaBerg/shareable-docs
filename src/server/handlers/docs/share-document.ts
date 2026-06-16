@@ -1,12 +1,10 @@
 import { shareDocument } from "@/server/services/docs/share-document";
+import { parseJsonBody } from "@/server/foundation/helpers/parse-json-body";
+import { parseWithSchema } from "@/server/foundation/helpers/validation";
+import { jsonResponse } from "@/server/foundation/responses";
 import { documentRouteParamsSchema, shareDocumentRequestSchema } from "@/types/docs";
 
-import {
-  jsonResponse,
-  parseJsonBody,
-  parseWithSchema,
-  withApiHandler,
-} from "../api";
+import { withApiHandler } from "../api";
 
 export const shareDocumentHandler = withApiHandler<{ id: string }>(
   async ({ request, ctx, params }) => {

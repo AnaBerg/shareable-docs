@@ -1,5 +1,4 @@
 import { describe, expect, it, vi } from "vitest";
-import { z } from "zod";
 
 import { forbiddenError } from "@/server/foundation/errors";
 
@@ -49,29 +48,4 @@ describe("API handler foundation", () => {
     });
   });
 
-  it("returns validation_error for malformed JSON", async () => {
-    const { parseJsonBody } = await import("./api");
-
-    await expect(
-      parseJsonBody(
-        new Request("https://app.test/api/docs", {
-          method: "POST",
-          body: "{",
-        }),
-      ),
-    ).rejects.toMatchObject({ status: 400, code: "validation_error" });
-  });
-
-  it("formats Zod validation failures without echoing submitted HTML", async () => {
-    const { parseWithSchema } = await import("./api");
-    const schema = z.object({ name: z.string().min(1) });
-
-    try {
-      parseWithSchema(schema, { name: "", html: "<script>alert(1)</script>" });
-      throw new Error("expected parseWithSchema to throw");
-    } catch (error) {
-      expect(error).toMatchObject({ status: 400, code: "validation_error" });
-      expect(JSON.stringify(error)).not.toContain("<script>");
-    }
-  });
 });

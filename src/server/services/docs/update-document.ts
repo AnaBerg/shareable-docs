@@ -6,9 +6,8 @@ import {
   forbiddenError,
   notFoundError,
 } from "@/server/foundation/errors";
+import { isUniqueViolation } from "@/server/foundation/helpers/db-errors";
 import type { DocumentRouteParams, UpdateDocumentRequest } from "@/types/docs";
-
-import { isUniqueViolation } from "./db-errors";
 
 export async function updateDocument(
   ctx: ApiContext,

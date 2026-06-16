@@ -36,6 +36,12 @@ describe("updateDocumentHandler", () => {
     );
 
     expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      id: "01HZXJK8JHX7QY9N7K6X8Y2W0A",
+      version: 2,
+      latestVersion: 2,
+      updatedAt: updatedAt.toISOString(),
+    });
     expect(service.updateDocument).toHaveBeenCalledWith(
       ctx,
       { id: "01HZXJK8JHX7QY9N7K6X8Y2W0A" },
