@@ -1,4 +1,4 @@
-import { createDocument } from "@/services/docs/create-document";
+import { createDocument } from "@/server/services/docs/create-document";
 import { createDocumentRequestSchema } from "@/types/docs";
 
 import {

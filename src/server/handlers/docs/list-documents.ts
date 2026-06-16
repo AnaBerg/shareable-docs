@@ -1,4 +1,4 @@
-import { listDocuments } from "@/services/docs/list-documents";
+import { listDocuments } from "@/server/services/docs/list-documents";
 import { listDocumentsQuerySchema } from "@/types/docs";
 
 import {

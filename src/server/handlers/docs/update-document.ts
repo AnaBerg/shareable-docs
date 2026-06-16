@@ -1,4 +1,4 @@
-import { updateDocument } from "@/services/docs/update-document";
+import { updateDocument } from "@/server/services/docs/update-document";
 import { documentRouteParamsSchema, updateDocumentRequestSchema } from "@/types/docs";
 
 import {

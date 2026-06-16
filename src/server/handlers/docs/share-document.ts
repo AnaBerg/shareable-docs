@@ -1,4 +1,4 @@
-import { shareDocument } from "@/services/docs/share-document";
+import { shareDocument } from "@/server/services/docs/share-document";
 import { documentRouteParamsSchema, shareDocumentRequestSchema } from "@/types/docs";
 
 import {

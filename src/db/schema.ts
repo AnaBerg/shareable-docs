@@ -108,7 +108,7 @@ export const documentShares = pgTable(
     index("document_shares_shared_with_email_idx").on(table.sharedWithEmail),
     check(
       "document_shares_shared_with_email_normalized_check",
-      sql`${table.sharedWithEmail} = lower(trim(${table.sharedWithEmail}))`,
+      sql`${table.sharedWithEmail} = lower(trim(${table.sharedWithEmail})) and length(trim(${table.sharedWithEmail})) > 0`,
     ),
   ],
 );

@@ -31,11 +31,17 @@ export function apiError(
 }
 
 export function isApiError(error: unknown): error is ApiError {
+  if (typeof error !== "object" || error === null) {
+    return false;
+  }
+
+  const candidate = error as Record<string, unknown>;
+
   return (
-    typeof error === "object" &&
-    error !== null &&
-    "kind" in error &&
-    error.kind === "api_error"
+    candidate.kind === "api_error" &&
+    typeof candidate.status === "number" &&
+    typeof candidate.code === "string" &&
+    typeof candidate.message === "string"
   );
 }
 

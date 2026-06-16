@@ -27,23 +27,23 @@ vi.mock("@/server/foundation/logs", () => ({
   logApiRequest: vi.fn(),
 }));
 
-vi.mock("@/services/docs/create-document", () => ({
+vi.mock("@/server/services/docs/create-document", () => ({
   createDocument: serviceMocks.createDocument,
 }));
 
-vi.mock("@/services/docs/get-document", () => ({
+vi.mock("@/server/services/docs/get-document", () => ({
   getDocument: serviceMocks.getDocument,
 }));
 
-vi.mock("@/services/docs/list-documents", () => ({
+vi.mock("@/server/services/docs/list-documents", () => ({
   listDocuments: serviceMocks.listDocuments,
 }));
 
-vi.mock("@/services/docs/share-document", () => ({
+vi.mock("@/server/services/docs/share-document", () => ({
   shareDocument: serviceMocks.shareDocument,
 }));
 
-vi.mock("@/services/docs/update-document", () => ({
+vi.mock("@/server/services/docs/update-document", () => ({
   updateDocument: serviceMocks.updateDocument,
 }));
 

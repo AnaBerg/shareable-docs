@@ -1,8 +1,11 @@
 import { auth } from "@clerk/nextjs/server";
-import { and, eq, isNull } from "drizzle-orm";
 
-import { db, type User, users } from "@/db";
+import { db, type User } from "@/db";
 import { normalizeEmail } from "@/server/foundation/email";
+import {
+  findActiveUserByClerkId,
+  type UserLookupDb,
+} from "@/server/repositories/users/find-active-user-by-clerk-id";
 import { apiErrorResponse } from "@/server/foundation/responses";
 
 import { forbiddenError, unauthorizedError } from "./errors";
@@ -20,14 +23,6 @@ export type ApiContextResult =
   | { ok: true; ctx: ApiContext }
   | { ok: false; response: Response };
 
-type UserLookupDb = {
-  query: {
-    users: {
-      findFirst(args: unknown): Promise<User | undefined | null>;
-    };
-  };
-};
-
 export async function createApiContext(
   database: UserLookupDb = db as UserLookupDb,
   requestId = crypto.randomUUID(),
@@ -41,9 +36,7 @@ export async function createApiContext(
     };
   }
 
-  const user = await database.query.users.findFirst({
-    where: and(eq(users.clerkUserId, session.userId), isNull(users.deletedAt)),
-  });
+  const user = await findActiveUserByClerkId(database, session.userId);
 
   if (!user) {
     return {

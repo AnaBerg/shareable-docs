@@ -40,7 +40,7 @@ The helper should build an `ApiContext` for every protected API request. It shou
 - Load the active local `users` row by `clerkUserId`.
 - Normalize and expose the local user's primary email when present.
 - Return a clear `401` response when no Clerk session exists.
-- Return a clear `409` response when a Clerk session exists but the local user row has not been synchronized yet.
+- Return a clear `403` response when a Clerk session exists but the local user row has not been synchronized yet.
 - Expose the local user as `ctx.user`.
 - Expose the local user's normalized primary email as `ctx.userEmail`.
 - Expose the Drizzle database handle as `ctx.db`.
@@ -126,7 +126,7 @@ Endpoint files should not duplicate try/catch blocks for JSON parsing or Zod for
 
 Next.js route files and HTTP handlers should not import the global database directly. They should receive `ctx.db` from `ApiContext` and pass it into repositories or services. This makes tests easier and keeps database access consistent.
 
-Repository modules under `src/repository/docs` should own Drizzle queries. Service modules under `src/services/docs` should own business rules and transaction orchestration. Handler files under `src/server/handlers` should only compose the API foundation, request contracts, and service calls. Next route files under `src/app/api` should only export the corresponding handler functions required by Next.js.
+Repository modules under `src/server/repositories/docs` should own Drizzle queries. Service modules under `src/server/services/docs` should own business rules and transaction orchestration. Handler files under `src/server/handlers` should only compose the API foundation, request contracts, and service calls. Next route files under `src/app/api` should only export the corresponding handler functions required by Next.js.
 
 ### Logging
 
@@ -408,7 +408,7 @@ Sharing is document-level. A shared email can read every existing and future ver
 ## Authorization Rules
 
 - Unauthenticated requests return `401`.
-- Authenticated requests without a local `users` row return `409`.
+- Authenticated requests without a local `users` row return `403`.
 - Owners can read, update, list, and share their documents.
 - Shared users can read, list, and share documents shared with their primary email.
 - Shared users cannot update documents.
@@ -435,7 +435,7 @@ Recommended status codes:
 - `401`: missing Clerk session.
 - `403`: authenticated user lacks access.
 - `404`: document or version not found.
-- `409`: local user has not been synchronized yet, or a concurrent version insert conflicts after retry handling.
+- `409`: a concurrent version insert conflicts after retry handling.
 - `500`: unexpected server/database error.
 
 Validation errors should not echo submitted HTML.
@@ -453,16 +453,16 @@ src/server/handlers/docs.ts
 src/server/foundation/context.ts
 src/server/foundation/errors.ts
 src/server/foundation/logs.ts
-src/services/docs/create-document.ts
-src/services/docs/get-document.ts
-src/services/docs/list-documents.ts
-src/services/docs/share-document.ts
-src/services/docs/update-document.ts
-src/repository/docs/*.ts
+src/server/services/docs/create-document.ts
+src/server/services/docs/get-document.ts
+src/server/services/docs/list-documents.ts
+src/server/services/docs/share-document.ts
+src/server/services/docs/update-document.ts
+src/server/repositories/docs/*.ts
 src/types/docs.ts
 ```
 
-Files under `src/repository/docs` should contain focused database queries. Files under `src/services/docs` should contain authorization and document workflows that are easier to test without Route Handler boilerplate. Files under `src/server/handlers/docs` should parse HTTP inputs and call the document services. The `src/app/api/docs/**/route.ts` files should stay thin and export the matching Next.js Route Handler methods.
+Files under `src/server/repositories/docs` should contain focused database queries. Files under `src/server/services/docs` should contain authorization and document workflows that are easier to test without Route Handler boilerplate. Files under `src/server/handlers/docs` should parse HTTP inputs and call the document services. The `src/app/api/docs/**/route.ts` files should stay thin and export the matching Next.js Route Handler methods.
 
 ## Testing
 
@@ -479,7 +479,7 @@ Test the contract layer:
 Test the API context helper:
 
 - Returns `401` when Clerk has no authenticated user.
-- Returns `409` when a Clerk user exists but no active local user row exists.
+- Returns `403` when a Clerk user exists but no active local user row exists.
 - Returns `ApiContext` with local user and normalized email when present.
 
 Test the API foundation:
@@ -519,7 +519,7 @@ Test HTTP handlers with mocked service/context dependencies where useful:
 5. Add the shared handler wrapper, response helpers, and request parsing under `src/server/handlers`.
 6. Add Zod contracts and document types in `src/types/docs.ts`.
 7. Add repository and service tests before implementation.
-8. Add repository and service implementation under `src/repository/docs` and `src/services/docs`.
+8. Add repository and service implementation under `src/server/repositories/docs` and `src/server/services/docs`.
 9. Add handler tests before each handler implementation.
 10. Add thin Next.js Route Handlers in `src/app/api/docs/**/route.ts` that delegate to `src/server/handlers/docs.ts`.
 11. Run `bun run test`, `bun run typecheck`, and `bun run lint`.

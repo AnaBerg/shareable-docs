@@ -111,7 +111,7 @@
       "checkConstraints": {
         "document_shares_shared_with_email_normalized_check": {
           "name": "document_shares_shared_with_email_normalized_check",
-          "value": "\"document_shares\".\"shared_with_email\" = lower(trim(\"document_shares\".\"shared_with_email\"))"
+          "value": "\"document_shares\".\"shared_with_email\" = lower(trim(\"document_shares\".\"shared_with_email\")) and length(trim(\"document_shares\".\"shared_with_email\")) > 0"
         }
       },
       "isRLSEnabled": false

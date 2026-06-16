@@ -1,4 +1,4 @@
-import { getDocument } from "@/services/docs/get-document";
+import { getDocument } from "@/server/services/docs/get-document";
 import { documentRouteParamsSchema, getDocumentQuerySchema } from "@/types/docs";
 
 import {

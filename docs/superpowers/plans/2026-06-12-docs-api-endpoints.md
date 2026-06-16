@@ -4,7 +4,7 @@
 
 **Goal:** Build versioned HTML document APIs with shared endpoint foundation, authenticated API context, Drizzle persistence, Zod contracts, and tests.
 
-**Architecture:** Next.js `src/app/api/**/route.ts` files stay thin and delegate to HTTP handlers in `src/server/handlers/docs.ts`. Generic API infrastructure lives in `src/server/foundation` and `src/server/handlers/api.ts`; business rules live in `src/services/docs`; Drizzle queries live in `src/repository/docs`; Zod contracts and shared document types live in `src/types/docs.ts`.
+**Architecture:** Next.js `src/app/api/**/route.ts` files stay thin and delegate to HTTP handlers in `src/server/handlers/docs.ts`. Generic API infrastructure lives in `src/server/foundation` and `src/server/handlers/api.ts`; business rules live in `src/server/services/docs`; Drizzle queries live in `src/server/repositories/docs`; Zod contracts and shared document types live in `src/types/docs.ts`.
 
 **Tech Stack:** Next.js 16 Route Handlers, Clerk, Drizzle ORM, Postgres, Zod 4, Vitest, Bun.
 
@@ -201,13 +201,13 @@ Expected: pass.
 ## Task 4: Repository And Services
 
 **Files:**
-- Create: focused files under `src/repository/docs/*.ts`
-- Create: `src/services/docs/create-document.ts`
-- Create: `src/services/docs/get-document.ts`
-- Create: `src/services/docs/list-documents.ts`
-- Create: `src/services/docs/share-document.ts`
-- Create: `src/services/docs/update-document.ts`
-- Create: one test file per service under `src/services/docs/*.test.ts`
+- Create: focused files under `src/server/repositories/docs/*.ts`
+- Create: `src/server/services/docs/create-document.ts`
+- Create: `src/server/services/docs/get-document.ts`
+- Create: `src/server/services/docs/list-documents.ts`
+- Create: `src/server/services/docs/share-document.ts`
+- Create: `src/server/services/docs/update-document.ts`
+- Create: one test file per service under `src/server/services/docs/*.test.ts`
 
 - [ ] **Step 1: Add failing service tests**
 
@@ -227,7 +227,7 @@ Create service tests using an in-memory repository fake. Cover:
 
 - [ ] **Step 2: Verify service tests fail**
 
-Run: `bun run test src/services/docs`
+Run: `bun run test src/server/services/docs`
 
 Expected: fail because services do not exist.
 
@@ -237,7 +237,7 @@ Services should accept `{ db, user, userEmail }` from `ApiContext`, call focused
 
 - [ ] **Step 4: Implement repository**
 
-Implement focused Drizzle query files under `src/repository/docs`. Include:
+Implement focused Drizzle query files under `src/server/repositories/docs`. Include:
 
 ```ts
 createDocumentWithInitialVersion(input)
@@ -252,7 +252,7 @@ Use `onConflictDoNothing` for idempotent share inserts.
 
 - [ ] **Step 5: Verify services pass**
 
-Run: `bun run test src/services/docs`
+Run: `bun run test src/server/services/docs`
 
 Expected: pass.
 
