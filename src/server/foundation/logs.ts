@@ -60,6 +60,10 @@ function deploymentFields() {
 /**
  * Errors are described with the dimensions an on-call reader filters by: which
  * failure it was, where it came from, and whether retrying could help.
+ *
+ * Only messages we author are logged. Unexpected errors bubble up from drivers
+ * and third parties, so their messages can carry connection strings, SQL, or
+ * request content; the error type is the safe dimension to keep.
  */
 export function describeError(error: unknown) {
   if (isApiError(error)) {
@@ -74,7 +78,7 @@ export function describeError(error: unknown) {
   return {
     errorCode: "internal_error",
     errorType: getErrorType(error),
-    errorMessage: error instanceof Error ? error.message : String(error),
+    errorMessage: "Unexpected error",
     errorRetriable: true,
   };
 }

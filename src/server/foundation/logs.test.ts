@@ -68,11 +68,13 @@ describe("API logs", () => {
     });
   });
 
-  it("describes unexpected errors as retriable internal failures", () => {
-    expect(describeError(new TypeError("bad"))).toEqual({
+  it("describes unexpected errors without leaking their raw message", () => {
+    expect(
+      describeError(new TypeError("connect to postgres://user:secret@host failed")),
+    ).toEqual({
       errorCode: "internal_error",
       errorType: "TypeError",
-      errorMessage: "bad",
+      errorMessage: "Unexpected error",
       errorRetriable: true,
     });
   });

@@ -137,7 +137,7 @@ Repository modules under `src/server/repositories/docs` should own Drizzle queri
 - Service, environment, and deployment identity (`deploymentId`, `region`) when available.
 - `userId` when a local user was resolved.
 - Business context added by the request: `documentId`, `documentAccess`, `documentVersion`, `documentCount`, `shareCount`.
-- For failures, `errorCode`, `errorType`, `errorMessage`, and `errorRetriable`.
+- For failures, `errorCode`, `errorType`, `errorMessage`, and `errorRetriable`. Only messages the application authors are logged; unexpected errors are recorded by type with a stable generic message, because driver and third-party messages can carry connection strings, SQL, or request content.
 
 Request identity fields are written after the added context, so enrichment cannot overwrite them.
 
