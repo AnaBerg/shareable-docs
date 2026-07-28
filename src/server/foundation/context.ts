@@ -35,15 +35,26 @@ export async function createApiContext({
   requestId = crypto.randomUUID(),
   database = db as UserLookupDb,
 }: CreateApiContextOptions): Promise<ApiContextResult> {
-  const session = await auth();
+  const session = await auth({ acceptsToken: ["session_token", "api_key"] });
 
-  if (!session.userId) {
+  log.add({ tokenType: session.tokenType });
+
+  const clerkUserId =
+    session.tokenType === "session_token"
+      ? session.userId
+      : session.tokenType === "api_key" &&
+          session.isAuthenticated &&
+          session.subject.startsWith("user_")
+        ? session.subject
+        : null;
+
+  if (!clerkUserId) {
     return { ok: false, error: unauthorizedError() };
   }
 
-  log.add({ clerkUserId: session.userId });
+  log.add({ clerkUserId });
 
-  const user = await findActiveUserByClerkId(database, session.userId);
+  const user = await findActiveUserByClerkId(database, clerkUserId);
 
   if (!user) {
     return {

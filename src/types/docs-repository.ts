@@ -9,7 +9,7 @@ import type { ApiContext } from "@/server/foundation/context";
 
 export type DocumentsDatabase = ApiContext["db"];
 
-export type DocumentAccess = "owned" | "shared";
+export type DocumentAccess = "owned" | "shared" | "link";
 
 export type DocumentListItem = Document & {
   access: DocumentAccess;
@@ -40,3 +40,9 @@ export type ListDocumentsInput = {
 };
 
 export type ShareDocumentResult = DocumentShare[];
+
+export type UpsertShareLinkInput = {
+  documentId: string;
+  tokenHash: string;
+  createdByUserId: string;
+};

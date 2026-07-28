@@ -1,20 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Shareable Docs
 
-## Getting Started
+Publish HTML documents from an agent or the CLI, and share them with your team through a link. Documents are versioned; the viewer at `/d/<id>` renders the latest version inside a sandboxed iframe.
 
-First, run the development server:
+## Access modes
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+A document can be opened in three ways:
+
+1. **Owner** — the signed-in user who created it (directly or via their API key) can always open `/d/<id>`.
+2. **Shared by email** — the owner shares the document with specific emails (`POST /api/docs/share/<id>`); recipients open `/d/<id>` while signed in with a matching email.
+3. **Secret link** — the owner creates an optional per-document link (`POST /api/docs/<id>/link`); anyone with `/d/<id>?t=<token>` can read the document without an account. Creating a new link rotates the token and invalidates the old one; revoking disables it.
+
+Secret links are read-only. Unauthorized viewers get a 404, never a 403, so document existence is not leaked.
+
+## Agent authentication
+
+Agents authenticate with a Clerk **user-scoped** API key sent as a bearer token:
+
+```text
+Authorization: Bearer $SHAREABLE_DOCS_API_KEY
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The key maps to a Clerk user, so documents published with it are owned by that user — ownership and email sharing behave exactly as they do for a browser session. Create the key in the Clerk dashboard (API Keys, user-scoped).
+
+The key and the deployment URL live in the **agent's** environment (`SHAREABLE_DOCS_API_KEY`, `SHAREABLE_DOCS_URL`), not in this app's `.env`. The `publish-doc` skill in `.agents/skills/publish-doc` packages the full workflow for Claude Code and other agents.
+
+## Publish example
+
+Create a document from an HTML file:
+
+```bash
+jq -n --arg name "Q3 Launch Plan" --rawfile html ./plan.html \
+  '{name: $name, html: $html}' \
+| curl -sS --fail-with-body -X POST "$SHAREABLE_DOCS_URL/api/docs" \
+    -H "Authorization: Bearer $SHAREABLE_DOCS_API_KEY" \
+    -H "Content-Type: application/json" \
+    --data @-
+```
+
+The `201` response includes the document `id`. Share it with teammates at `$SHAREABLE_DOCS_URL/d/<id>`, or create a secret link:
+
+```bash
+curl -sS --fail-with-body -X POST "$SHAREABLE_DOCS_URL/api/docs/$DOC_ID/link" \
+  -H "Authorization: Bearer $SHAREABLE_DOCS_API_KEY"
+```
+
+Publish a new version later with `PUT /api/docs/$DOC_ID` and `{"html": "..."}` — existing links keep pointing at the latest version.
+
+## Local development
+
+```bash
+bun install
+cp .env.example .env   # fill in the Clerk keys
+bun run db:local:up    # start Postgres via Docker
+bun run db:migrate
+bun run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
 
 ## Tests
 
@@ -28,21 +70,11 @@ Vitest runs in `test` mode and loads `.env.test` when present. The current unit 
 
 For tests that connect to Postgres, create `.env.test` with a real `DATABASE_URL` for the test database.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Also available: `bun run typecheck` and `bun run lint`.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Database
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `bun run db:local:up` / `db:local:down` / `db:local:logs` — local Postgres via Docker Compose
+- `bun run db:generate` — generate a Drizzle migration from `src/db/schema.ts`
+- `bun run db:migrate` — apply migrations
+- `bun run db:studio` — browse the database with Drizzle Studio

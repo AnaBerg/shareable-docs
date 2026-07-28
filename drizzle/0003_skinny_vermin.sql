@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "document_share_links_document_id_active_unique" ON "document_share_links" USING btree ("document_id") WHERE "document_share_links"."revoked_at" is null;

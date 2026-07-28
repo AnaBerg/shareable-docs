@@ -1,14 +1,13 @@
 import { findDocumentById } from "@/server/repositories/docs/find-document-by-id";
-import { upsertDocumentShares } from "@/server/repositories/docs/upsert-shares";
+import { revokeShareLink as revokeShareLinkRow } from "@/server/repositories/docs/revoke-share-link";
 import type { ApiContext } from "@/server/foundation/context";
 import { forbiddenError, notFoundError } from "@/server/foundation/errors";
 import { resolveDocumentAccess } from "@/server/foundation/helpers/resolve-document-access";
-import type { DocumentRouteParams, ShareDocumentRequest } from "@/types/docs";
+import type { DocumentRouteParams } from "@/types/docs";
 
-export async function shareDocument(
+export async function revokeShareLink(
   ctx: ApiContext,
   params: DocumentRouteParams,
-  input: ShareDocumentRequest,
 ) {
   const document = await findDocumentById(ctx.db, params.id);
   if (!document) {
@@ -20,20 +19,16 @@ export async function shareDocument(
     document,
   );
   if (access !== "owned") {
-    throw forbiddenError("Only document owners can share");
+    throw forbiddenError("Only document owners can manage share links");
   }
 
-  const shares = await upsertDocumentShares(ctx.db, {
-    documentId: document.id,
-    emails: input.emails,
-    sharedByUserId: ctx.user.id,
-  });
+  const link = await revokeShareLinkRow(ctx.db, document.id);
 
   ctx.log.add({
     documentId: document.id,
     documentAccess: access,
-    shareCount: shares.length,
+    shareLinkRevoked: link !== null,
   });
 
-  return { document, shares, access };
+  return { document, access, revoked: link !== null };
 }

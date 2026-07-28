@@ -4,8 +4,10 @@ import { forbiddenError } from "@/server/foundation/errors";
 
 const serviceMocks = vi.hoisted(() => ({
   createDocument: vi.fn(),
+  createShareLink: vi.fn(),
   getDocument: vi.fn(),
   listDocuments: vi.fn(),
+  revokeShareLink: vi.fn(),
   shareDocument: vi.fn(),
   updateDocument: vi.fn(),
 }));
@@ -29,6 +31,14 @@ vi.mock("@/server/foundation/logs", () => ({
 
 vi.mock("@/server/services/docs/create-document", () => ({
   createDocument: serviceMocks.createDocument,
+}));
+
+vi.mock("@/server/services/docs/create-share-link", () => ({
+  createShareLink: serviceMocks.createShareLink,
+}));
+
+vi.mock("@/server/services/docs/revoke-share-link", () => ({
+  revokeShareLink: serviceMocks.revokeShareLink,
 }));
 
 vi.mock("@/server/services/docs/get-document", () => ({
@@ -215,6 +225,78 @@ describe("docs HTTP handlers", () => {
     await expect(response.json()).resolves.toEqual({
       id: "01HZXJK8JHX7QY9N7K6X8Y2W0A",
       sharedWith: ["reader@example.com", "reviewer@example.com"],
+    });
+  });
+  it("creates a share link and returns the token once", async () => {
+    serviceMocks.createShareLink.mockResolvedValue({
+      document: { id: "01HZXJK8JHX7QY9N7K6X8Y2W0A" },
+      token: "token-abc",
+    });
+
+    const { createShareLinkHandler } = await import(".");
+    const response = await createShareLinkHandler(
+      new Request("https://app.test/api/docs/01HZXJK8JHX7QY9N7K6X8Y2W0A/link", {
+        method: "POST",
+      }),
+      { params: Promise.resolve({ id: "01HZXJK8JHX7QY9N7K6X8Y2W0A" }) },
+    );
+
+    expect(response.status).toBe(201);
+    await expect(response.json()).resolves.toEqual({
+      id: "01HZXJK8JHX7QY9N7K6X8Y2W0A",
+      url: "https://app.test/d/01HZXJK8JHX7QY9N7K6X8Y2W0A?t=token-abc",
+      token: "token-abc",
+    });
+  });
+
+  it("rejects an invalid share-link document id before calling the service", async () => {
+    const { createShareLinkHandler } = await import(".");
+    const response = await createShareLinkHandler(
+      new Request("https://app.test/api/docs/not-a-ulid/link", { method: "POST" }),
+      { params: Promise.resolve({ id: "not-a-ulid" }) },
+    );
+
+    expect(response.status).toBe(422);
+    expect(serviceMocks.createShareLink).not.toHaveBeenCalled();
+  });
+
+  it("maps share-link owner-only errors to 403", async () => {
+    serviceMocks.createShareLink.mockRejectedValue(
+      forbiddenError("Only document owners can manage share links"),
+    );
+
+    const { createShareLinkHandler } = await import(".");
+    const response = await createShareLinkHandler(
+      new Request("https://app.test/api/docs/01HZXJK8JHX7QY9N7K6X8Y2W0A/link", {
+        method: "POST",
+      }),
+      { params: Promise.resolve({ id: "01HZXJK8JHX7QY9N7K6X8Y2W0A" }) },
+    );
+
+    expect(response.status).toBe(403);
+    await expect(response.json()).resolves.toMatchObject({
+      error: { code: "forbidden" },
+    });
+  });
+
+  it("revokes a share link", async () => {
+    serviceMocks.revokeShareLink.mockResolvedValue({
+      document: { id: "01HZXJK8JHX7QY9N7K6X8Y2W0A" },
+      revoked: true,
+    });
+
+    const { revokeShareLinkHandler } = await import(".");
+    const response = await revokeShareLinkHandler(
+      new Request("https://app.test/api/docs/01HZXJK8JHX7QY9N7K6X8Y2W0A/link", {
+        method: "DELETE",
+      }),
+      { params: Promise.resolve({ id: "01HZXJK8JHX7QY9N7K6X8Y2W0A" }) },
+    );
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toEqual({
+      id: "01HZXJK8JHX7QY9N7K6X8Y2W0A",
+      revoked: true,
     });
   });
 });
