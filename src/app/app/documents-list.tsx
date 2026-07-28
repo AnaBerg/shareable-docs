@@ -121,9 +121,20 @@ function DocumentRow({ document }: { document: DocumentListEntry }) {
 
 function ShareLinkReveal({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
 
   async function copy() {
-    await navigator.clipboard.writeText(url);
+    // navigator.clipboard is undefined outside a secure context and writeText
+    // rejects when permission is denied, so the owner must still be able to
+    // reach the URL by selecting it manually.
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      setCopyFailed(true);
+      return;
+    }
+
+    setCopyFailed(false);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -142,6 +153,12 @@ function ShareLinkReveal({ url }: { url: string }) {
           </InputGroupButton>
         </InputGroupAddon>
       </InputGroup>
+      {copyFailed && (
+        <p className="text-xs text-destructive">
+          Could not copy automatically. Select the link above and copy it
+          manually.
+        </p>
+      )}
       <p className="text-xs text-muted-foreground">
         Copy this link now — it will not be shown again. Creating a new link
         invalidates the previous one.
