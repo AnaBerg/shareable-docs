@@ -1,14 +1,14 @@
 import { and, eq, inArray, max } from "drizzle-orm";
 
-import { documentVersions } from "@/db";
+import { documentVersions, type DocumentVersion } from "@/db";
 import type { DocumentsDatabase } from "@/types/docs-repository";
 
 export async function findLatestVersionsForDocuments(
   db: DocumentsDatabase,
   documentIds: string[],
-) {
+): Promise<Map<string, DocumentVersion>> {
   if (documentIds.length === 0) {
-    return new Map();
+    return new Map<string, DocumentVersion>();
   }
 
   const latestVersionNumbers = db
@@ -30,9 +30,10 @@ export async function findLatestVersionsForDocuments(
         eq(documentVersions.documentId, latestVersionNumbers.documentId),
         eq(documentVersions.versionNumber, latestVersionNumbers.versionNumber),
       ),
-    );
+    )
+    .where(inArray(documentVersions.documentId, documentIds));
 
-  const latestVersions = new Map<string, typeof documentVersions.$inferSelect>();
+  const latestVersions = new Map<string, DocumentVersion>();
 
   for (const row of rows) {
     latestVersions.set(row.document_versions.documentId, row.document_versions);

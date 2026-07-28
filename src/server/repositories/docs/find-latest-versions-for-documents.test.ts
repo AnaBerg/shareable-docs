@@ -26,7 +26,8 @@ describe("findLatestVersionsForDocuments", () => {
     const rows = versions.map((version) => ({ document_versions: version }));
     const latestRowsQuery = {
       from: vi.fn(() => latestRowsQuery),
-      innerJoin: vi.fn(async () => rows),
+      innerJoin: vi.fn(() => latestRowsQuery),
+      where: vi.fn(async () => rows),
     };
     const db = {
       select: vi
@@ -39,6 +40,7 @@ describe("findLatestVersionsForDocuments", () => {
 
     expect(latestSubquery.groupBy).toHaveBeenCalledTimes(1);
     expect(latestRowsQuery.innerJoin).toHaveBeenCalledTimes(1);
+    expect(latestRowsQuery.where).toHaveBeenCalledTimes(1);
     expect(latest.get("doc_1")).toBe(versions[0]);
     expect(latest.get("doc_2")).toBe(versions[1]);
   });
