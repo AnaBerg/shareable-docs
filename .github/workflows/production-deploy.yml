@@ -43,6 +43,17 @@ jobs:
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
 
+      # Runs before the deploy so a release can never ship code that expects a
+      # schema the database does not have. `vercel pull` wrote the production
+      # DATABASE_URL into .vercel/.env.production.local; migrations use the
+      # unpooled URL because a pooled connection cannot hold a session lock.
+      - name: Apply database migrations
+        run: |
+          set -a
+          . .vercel/.env.production.local
+          set +a
+          bun run db:migrate
+
       - name: Build
         run: bunx vercel@58.0.0 build --prod --token="$VERCEL_TOKEN"
         env:
