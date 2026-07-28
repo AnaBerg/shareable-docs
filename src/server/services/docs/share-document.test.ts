@@ -61,4 +61,25 @@ describe("shareDocument", () => {
     ).rejects.toMatchObject({ status: 403, code: "forbidden" });
     expect(repository.upsertDocumentShares).not.toHaveBeenCalled();
   });
+
+  it("treats link access as insufficient to share", async () => {
+    vi.resetModules();
+    vi.doMock("@/server/foundation/helpers/resolve-document-access", () => ({
+      resolveDocumentAccess: vi.fn().mockResolvedValue("link"),
+    }));
+    repository.findDocumentById.mockResolvedValue(document());
+
+    const { shareDocument } = await import("./share-document");
+    await expect(
+      shareDocument(
+        apiContext("owner"),
+        { id: "01HZXJK8JHX7QY9N7K6X8Y2W0A" },
+        { emails: ["reader@example.com"] },
+      ),
+    ).rejects.toMatchObject({ status: 403, code: "forbidden" });
+    expect(repository.upsertDocumentShares).not.toHaveBeenCalled();
+
+    vi.doUnmock("@/server/foundation/helpers/resolve-document-access");
+    vi.resetModules();
+  });
 });

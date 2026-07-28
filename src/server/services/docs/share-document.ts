@@ -15,7 +15,10 @@ export async function shareDocument(
     throw notFoundError("Document not found");
   }
 
-  const access = await resolveDocumentAccess(ctx, document);
+  const access = await resolveDocumentAccess(
+    { db: ctx.db, viewer: { kind: "user", userId: ctx.user.id, email: ctx.userEmail } },
+    document,
+  );
   if (access !== "owned") {
     throw forbiddenError("Only document owners can share");
   }

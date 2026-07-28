@@ -7,6 +7,7 @@ import {
   notFoundError,
 } from "@/server/foundation/errors";
 import { isUniqueViolation } from "@/server/foundation/helpers/db-errors";
+import { resolveDocumentAccess } from "@/server/foundation/helpers/resolve-document-access";
 import type { DocumentRouteParams, UpdateDocumentRequest } from "@/types/docs";
 
 export async function updateDocument(
@@ -19,7 +20,11 @@ export async function updateDocument(
     throw notFoundError("Document not found");
   }
 
-  if (document.ownerUserId !== ctx.user.id) {
+  const access = await resolveDocumentAccess(
+    { db: ctx.db, viewer: { kind: "user", userId: ctx.user.id, email: ctx.userEmail } },
+    document,
+  );
+  if (access !== "owned") {
     throw forbiddenError("Only the document owner can update it");
   }
 
