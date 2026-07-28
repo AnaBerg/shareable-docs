@@ -1,7 +1,9 @@
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextResponse, type NextRequest } from "next/server";
 
-const isProtectedRoute = createRouteMatcher(["/app(.*)", "/dashboard(.*)"]);
+// Exactly "/" — the document list lives at the root, but the matcher must not
+// widen to "/(.*)" or it would swallow the public /d/<id> viewer along with it.
+const isProtectedRoute = createRouteMatcher(["/", "/dashboard(.*)"]);
 const isApiRoute = createRouteMatcher(["/api(.*)"]);
 const isClerkWebhookRoute = createRouteMatcher(["/api/webhooks/clerk"]);
 const mutatingMethods = new Set(["DELETE", "PATCH", "POST", "PUT"]);

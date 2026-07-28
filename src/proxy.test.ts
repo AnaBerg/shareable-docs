@@ -103,4 +103,19 @@ describe("proxy", () => {
 
     expect(mocks.protect).toHaveBeenCalled();
   });
+
+  it("protects the document list at the root", async () => {
+    await runProxy("https://example.com/");
+
+    expect(mocks.protect).toHaveBeenCalled();
+  });
+
+  it("keeps the viewer public now that the root is protected", async () => {
+    // Regression: matching the root as "/(.*)" instead of "/" would protect
+    // every route, forcing sign-in on the secret links this product exists to
+    // hand out.
+    await runProxy(`https://example.com/d/${documentId}`);
+
+    expect(mocks.protect).not.toHaveBeenCalled();
+  });
 });
