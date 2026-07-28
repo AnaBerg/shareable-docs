@@ -23,7 +23,7 @@ This task is a prerequisite check, not code. If it fails, stop and revisit the a
 
 - [ ] **Step 1: Confirm the installed Clerk version exposes the token types**
 
-Run: `node -p "require('@clerk/backend/dist/tokens/tokenTypes')" ` or inspect `node_modules/@clerk/backend/dist/tokens/tokenTypes.d.ts`.
+Run: `node -p "require('@clerk/backend/dist/tokens/tokenTypes')"` or inspect `node_modules/@clerk/backend/dist/tokens/tokenTypes.d.ts`.
 
 Expected: `TokenType` includes `api_key` and `m2m_token`. (Verified on `@clerk/nextjs@7.5.2`.)
 

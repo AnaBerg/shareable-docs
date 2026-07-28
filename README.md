@@ -16,7 +16,7 @@ Secret links are read-only. Unauthorized viewers get a 404, never a 403, so docu
 
 Agents authenticate with a Clerk **user-scoped** API key sent as a bearer token:
 
-```
+```text
 Authorization: Bearer $SHAREABLE_DOCS_API_KEY
 ```
 

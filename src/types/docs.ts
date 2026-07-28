@@ -118,7 +118,7 @@ export const newDocumentShareLinkSchema = z
 export const createShareLinkResponseSchema = z
   .object({
     id: ulidSchema,
-    url: z.string().url(),
+    url: z.url(),
     token: nonEmptyStringSchema,
   })
   .strict();
