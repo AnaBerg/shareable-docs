@@ -95,8 +95,11 @@ function findIframes(node: unknown, found: ReactElement[] = []): ReactElement[] 
 
 describe("document viewer page", () => {
   beforeEach(() => {
+    // Clear every mock, not just viewDocument: a lingering mocks.notFound call
+    // from an earlier test would satisfy the not-found assertions below without
+    // this test having triggered anything.
+    vi.clearAllMocks();
     setLinkTokenCookie(undefined);
-    mocks.viewDocument.mockClear();
   });
 
   it("renders the stored HTML only inside an iframe sandboxed with exactly allow-scripts", async () => {
