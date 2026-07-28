@@ -130,6 +130,9 @@ function ShareLinkReveal({ url }: { url: string }) {
     try {
       await navigator.clipboard.writeText(url);
     } catch {
+      // Clear the success state too: a failure inside the 2s "Copied" window
+      // would otherwise label the button Copied next to the failure message.
+      setCopied(false);
       setCopyFailed(true);
       return;
     }
