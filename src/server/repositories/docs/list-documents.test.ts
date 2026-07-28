@@ -1,5 +1,7 @@
+import { and, inArray, isNull, ne } from "drizzle-orm";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { documents } from "@/db";
 import type { DocumentsDatabase } from "@/types/docs-repository";
 
 const helpers = vi.hoisted(() => ({
@@ -87,6 +89,32 @@ describe("listAccessibleDocuments", () => {
 
     expect(result).toEqual([]);
     expect(db.select).not.toHaveBeenCalled();
+  });
+
+  it("excludes documents owned by the caller from a shared listing", async () => {
+    const chain = {
+      from: vi.fn(() => chain),
+      where: vi.fn(() => chain),
+      orderBy: vi.fn(async () => []),
+    };
+    const db = { select: vi.fn(() => chain) } as unknown as DocumentsDatabase;
+    helpers.findSharedDocumentIds.mockResolvedValue(["doc_1", "doc_2"]);
+    helpers.findLatestVersionsForDocuments.mockResolvedValue(new Map());
+
+    const { listAccessibleDocuments } = await import("./list-documents");
+    await listAccessibleDocuments(db, {
+      ownerUserId: "owner",
+      sharedWithEmail: "owner@example.com",
+      access: "shared",
+    });
+
+    const expectedAccessCondition = and(
+      inArray(documents.id, ["doc_1", "doc_2"]),
+      ne(documents.ownerUserId, "owner"),
+    );
+    expect(chain.where).toHaveBeenCalledWith(
+      and(isNull(documents.deletedAt), expectedAccessCondition),
+    );
   });
 
   it("omits rows that have no latest version entry", async () => {

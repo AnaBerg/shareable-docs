@@ -1,4 +1,4 @@
-import { and, desc, eq, inArray, isNull, or } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, ne, or } from "drizzle-orm";
 
 import { documents } from "@/db";
 import type {
@@ -29,7 +29,10 @@ export async function listAccessibleDocuments(
     accessCondition =
       sharedDocumentIds.length === 0
         ? undefined
-        : inArray(documents.id, sharedDocumentIds);
+        : and(
+            inArray(documents.id, sharedDocumentIds),
+            ne(documents.ownerUserId, input.ownerUserId),
+          );
   } else if (sharedDocumentIds.length === 0) {
     accessCondition = ownedCondition;
   } else {
