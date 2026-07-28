@@ -2,13 +2,13 @@ import { auth } from "@clerk/nextjs/server";
 
 import { db, type User } from "@/db";
 import { normalizeEmail } from "@/server/foundation/helpers/email";
+import type { RequestLog } from "@/server/foundation/logs";
 import {
   findActiveUserByClerkId,
   type UserLookupDb,
 } from "@/server/repositories/users/find-active-user-by-clerk-id";
-import { apiErrorResponse } from "@/server/foundation/responses";
 
-import { conflictError, unauthorizedError } from "./errors";
+import { conflictError, unauthorizedError, type ApiError } from "./errors";
 
 type Db = typeof db;
 
@@ -17,38 +17,45 @@ export type ApiContext = {
   requestId: string;
   user: User;
   userEmail: string | null;
+  log: RequestLog;
 };
 
 export type ApiContextResult =
   | { ok: true; ctx: ApiContext }
-  | { ok: false; response: Response };
+  | { ok: false; error: ApiError };
 
-export async function createApiContext(
-  database: UserLookupDb = db as UserLookupDb,
+export type CreateApiContextOptions = {
+  log: RequestLog;
+  requestId?: string;
+  database?: UserLookupDb;
+};
+
+export async function createApiContext({
+  log,
   requestId = crypto.randomUUID(),
-): Promise<ApiContextResult> {
+  database = db as UserLookupDb,
+}: CreateApiContextOptions): Promise<ApiContextResult> {
   const session = await auth();
 
   if (!session.userId) {
-    return {
-      ok: false,
-      response: apiErrorResponse(unauthorizedError()),
-    };
+    return { ok: false, error: unauthorizedError() };
   }
+
+  log.add({ clerkUserId: session.userId });
 
   const user = await findActiveUserByClerkId(database, session.userId);
 
   if (!user) {
     return {
       ok: false,
-      response: apiErrorResponse(
-        conflictError(
-          "Authenticated user has not been synchronized yet",
-          "user_not_synced",
-        ),
+      error: conflictError(
+        "Authenticated user has not been synchronized yet",
+        "user_not_synced",
       ),
     };
   }
+
+  log.add({ userId: user.id });
 
   return {
     ok: true,
@@ -57,6 +64,7 @@ export async function createApiContext(
       requestId,
       user,
       userEmail: normalizeEmail(user.primaryEmail),
+      log,
     },
   };
 }

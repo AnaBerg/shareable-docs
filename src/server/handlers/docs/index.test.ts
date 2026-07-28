@@ -18,13 +18,13 @@ vi.mock("@/server/foundation/context", () => ({
       requestId: "req_test",
       user: { id: "user_1" },
       userEmail: "ada@example.com",
+      log: { add: vi.fn(), emit: vi.fn() },
     },
   }),
 }));
 
 vi.mock("@/server/foundation/logs", () => ({
-  getErrorType: vi.fn(() => "Error"),
-  logApiRequest: vi.fn(),
+  createRequestLog: vi.fn(() => ({ add: vi.fn(), emit: vi.fn() })),
 }));
 
 vi.mock("@/server/services/docs/create-document", () => ({

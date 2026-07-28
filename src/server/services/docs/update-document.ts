@@ -33,6 +33,12 @@ export async function updateDocument(
     throw notFoundError("Document not found");
   }
 
+  ctx.log.add({
+    documentId: document.id,
+    documentAccess: "owned",
+    documentVersion: updated.version.versionNumber,
+  });
+
   return updated;
 }
 

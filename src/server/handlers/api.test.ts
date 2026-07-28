@@ -10,13 +10,13 @@ vi.mock("@/server/foundation/context", () => ({
       user: { id: "user_1" },
       userEmail: "ada@example.com",
       requestId: "req_test",
+      log: { add: vi.fn(), emit: vi.fn() },
     },
   }),
 }));
 
 vi.mock("@/server/foundation/logs", () => ({
-  getErrorType: vi.fn(() => "Error"),
-  logApiRequest: vi.fn(),
+  createRequestLog: vi.fn(() => ({ add: vi.fn(), emit: vi.fn() })),
 }));
 
 describe("API handler foundation", () => {

@@ -1,5 +1,12 @@
+import { vi } from "vitest";
+
 import type { User } from "@/db";
 import type { ApiContext } from "@/server/foundation/context";
+import type { RequestLog } from "@/server/foundation/logs";
+
+export function requestLog(): RequestLog {
+  return { add: vi.fn(), emit: vi.fn() };
+}
 
 export function apiContext(userId: string, email?: string | null): ApiContext {
   const now = new Date("2026-06-12T00:00:00.000Z");
@@ -20,6 +27,7 @@ export function apiContext(userId: string, email?: string | null): ApiContext {
       deletedAt: null,
     } satisfies User,
     userEmail: primaryEmail,
+    log: requestLog(),
   };
 }
 

@@ -26,5 +26,11 @@ export async function shareDocument(
     sharedByUserId: ctx.user.id,
   });
 
+  ctx.log.add({
+    documentId: document.id,
+    documentAccess: access,
+    shareCount: shares.length,
+  });
+
   return { document, shares, access };
 }

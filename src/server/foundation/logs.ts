@@ -1,69 +1,82 @@
+import { isApiError } from "./errors";
+
 type ApiLogOutcome = "success" | "error";
 
-export type ApiLogEvent = {
-  event: "api.request";
-  schemaVersion: 1;
-  timestamp: string;
-  service: {
-    name: "shareable-docs";
-    environment: string;
-  };
-  request: {
-    id: string;
-    method: string;
-    path: string;
-  };
-  http: {
-    statusCode: number;
-  };
-  outcome: ApiLogOutcome;
-  duration: {
-    ms: number;
-  };
-  user?: {
-    id: string;
-  };
-  error?: {
-    code: string;
-    type: string;
-  };
+/**
+ * One wide event per request, enriched while the request runs and emitted once
+ * at the end. Handlers and services add business context through `add`, so the
+ * event carries the facts needed to answer questions about a request instead of
+ * a trail of statements about the code that served it.
+ */
+export type RequestLog = {
+  add: (fields: Record<string, unknown>) => void;
+  emit: (result: { status: number; durationMs: number; error?: unknown }) => void;
 };
 
-export type ApiRequestLogFields = {
+export type RequestLogSource = {
   requestId: string;
   method: string;
-  pathname: string;
-  status: number;
-  outcome: ApiLogOutcome;
-  durationMs: number;
-  userId?: string;
-  error?: ApiLogEvent["error"];
+  path: string;
 };
 
-export function logApiRequest(fields: ApiRequestLogFields): void {
-  console.info({
-    event: "api.request",
-    schemaVersion: 1,
-    timestamp: new Date().toISOString(),
-    service: {
-      name: "shareable-docs",
-      environment: process.env.NODE_ENV ?? "development",
+export function createRequestLog(source: RequestLogSource): RequestLog {
+  const context: Record<string, unknown> = {};
+
+  return {
+    add(fields) {
+      Object.assign(context, fields);
     },
-    request: {
-      id: fields.requestId,
-      method: fields.method,
-      path: fields.pathname,
+    emit({ status, durationMs, error }) {
+      console.info({
+        ...context,
+        event: "api.request",
+        schemaVersion: 2,
+        timestamp: new Date().toISOString(),
+        service: "shareable-docs",
+        environment: process.env.NODE_ENV ?? "development",
+        ...deploymentFields(),
+        requestId: source.requestId,
+        method: source.method,
+        path: source.path,
+        statusCode: status,
+        outcome: (status >= 400 ? "error" : "success") satisfies ApiLogOutcome,
+        durationMs,
+        ...(error === undefined ? {} : describeError(error)),
+      });
     },
-    http: {
-      statusCode: fields.status,
-    },
-    outcome: fields.outcome,
-    duration: {
-      ms: fields.durationMs,
-    },
-    ...(fields.userId === undefined ? {} : { user: { id: fields.userId } }),
-    ...(fields.error === undefined ? {} : { error: fields.error }),
-  } satisfies ApiLogEvent);
+  };
+}
+
+function deploymentFields() {
+  const deploymentId = process.env.VERCEL_DEPLOYMENT_ID;
+  const region = process.env.VERCEL_REGION;
+
+  return {
+    ...(deploymentId === undefined ? {} : { deploymentId }),
+    ...(region === undefined ? {} : { region }),
+  };
+}
+
+/**
+ * Errors are described with the dimensions an on-call reader filters by: which
+ * failure it was, where it came from, and whether retrying could help.
+ */
+export function describeError(error: unknown) {
+  if (isApiError(error)) {
+    return {
+      errorCode: error.code,
+      errorType: "ApiError",
+      errorMessage: error.message,
+      errorRetriable: error.status >= 500,
+    };
+  }
+
+  return {
+    errorCode: "internal_error",
+    errorType: getErrorType(error),
+    errorMessage: error instanceof Error ? error.message : String(error),
+    errorRetriable: true,
+  };
 }
 
 export function getErrorType(error: unknown): string {

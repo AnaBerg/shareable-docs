@@ -31,5 +31,12 @@ export async function getDocument(
     throw notFoundError("Document version not found");
   }
 
+  ctx.log.add({
+    documentId: document.id,
+    documentAccess: access,
+    documentVersion: version.versionNumber,
+    documentLatestVersion: latestVersion.versionNumber,
+  });
+
   return { document, version, latestVersion, access };
 }

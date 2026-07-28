@@ -12,5 +12,10 @@ export async function listDocuments(
     access: query.access,
   });
 
+  ctx.log.add({
+    listAccess: query.access,
+    documentCount: documents.length,
+  });
+
   return { documents };
 }

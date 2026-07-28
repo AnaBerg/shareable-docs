@@ -6,7 +6,7 @@ export async function createDocument(
   ctx: ApiContext,
   input: CreateDocumentRequest,
 ) {
-  return createDocumentRecord(ctx.db, {
+  const created = await createDocumentRecord(ctx.db, {
     document: {
       ownerUserId: ctx.user.id,
       name: input.name,
@@ -17,4 +17,12 @@ export async function createDocument(
       createdByUserId: ctx.user.id,
     },
   });
+
+  ctx.log.add({
+    documentId: created.document.id,
+    documentVersion: created.version.versionNumber,
+    documentAccess: "owned",
+  });
+
+  return created;
 }

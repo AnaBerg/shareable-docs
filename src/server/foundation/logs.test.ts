@@ -1,34 +1,80 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getErrorType, logApiRequest } from "./logs";
+import { forbiddenError } from "./errors";
+import { createRequestLog, describeError, getErrorType } from "./logs";
 
 describe("API logs", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("emits one structured event for an API request", () => {
+  it("emits one wide event carrying the context added during the request", () => {
     const info = vi.spyOn(console, "info").mockImplementation(() => {});
-
-    logApiRequest({
+    const log = createRequestLog({
       requestId: "req_1",
       method: "GET",
-      pathname: "/api/docs",
-      status: 200,
-      outcome: "success",
-      durationMs: 12,
-      userId: "user_1",
+      path: "/api/docs",
     });
 
+    log.add({ userId: "user_1" });
+    log.add({ documentId: "doc_1", documentAccess: "owned" });
+    log.emit({ status: 200, durationMs: 12 });
+
+    expect(info).toHaveBeenCalledTimes(1);
     expect(info).toHaveBeenCalledWith(
       expect.objectContaining({
         event: "api.request",
-        schemaVersion: 1,
-        service: expect.objectContaining({ name: "shareable-docs" }),
-        request: expect.objectContaining({ id: "req_1", path: "/api/docs" }),
-        user: { id: "user_1" },
+        schemaVersion: 2,
+        service: "shareable-docs",
+        requestId: "req_1",
+        method: "GET",
+        path: "/api/docs",
+        statusCode: 200,
+        outcome: "success",
+        durationMs: 12,
+        userId: "user_1",
+        documentId: "doc_1",
+        documentAccess: "owned",
       }),
     );
+  });
+
+  it("keeps request fields authoritative over added context", () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const log = createRequestLog({
+      requestId: "req_1",
+      method: "GET",
+      path: "/api/docs",
+    });
+
+    log.add({ requestId: "spoofed", statusCode: 200 });
+    log.emit({ status: 500, durationMs: 3 });
+
+    expect(info).toHaveBeenCalledWith(
+      expect.objectContaining({
+        requestId: "req_1",
+        statusCode: 500,
+        outcome: "error",
+      }),
+    );
+  });
+
+  it("describes API errors with code, message and retriability", () => {
+    expect(describeError(forbiddenError("Document access denied"))).toEqual({
+      errorCode: "forbidden",
+      errorType: "ApiError",
+      errorMessage: "Document access denied",
+      errorRetriable: false,
+    });
+  });
+
+  it("describes unexpected errors as retriable internal failures", () => {
+    expect(describeError(new TypeError("bad"))).toEqual({
+      errorCode: "internal_error",
+      errorType: "TypeError",
+      errorMessage: "bad",
+      errorRetriable: true,
+    });
   });
 
   it("classifies thrown values for logs", () => {
