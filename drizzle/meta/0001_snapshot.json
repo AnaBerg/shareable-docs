@@ -178,27 +178,6 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
-        },
-        "document_versions_document_id_created_at_idx": {
-          "name": "document_versions_document_id_created_at_idx",
-          "columns": [
-            {
-              "expression": "document_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         }
       },
       "foreignKeys": {

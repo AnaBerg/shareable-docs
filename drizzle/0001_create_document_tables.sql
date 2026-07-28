@@ -37,5 +37,4 @@ ALTER TABLE "document_shares" ADD CONSTRAINT "document_shares_shared_with_email_
   AND length(trim("document_shares"."shared_with_email")) > 0
 );--> statement-breakpoint
 CREATE UNIQUE INDEX "document_versions_document_id_version_unique" ON "document_versions" USING btree ("document_id","version_number");--> statement-breakpoint
-CREATE INDEX "document_versions_document_id_created_at_idx" ON "document_versions" USING btree ("document_id","created_at");--> statement-breakpoint
 CREATE INDEX "documents_owner_user_id_idx" ON "documents" USING btree ("owner_user_id");

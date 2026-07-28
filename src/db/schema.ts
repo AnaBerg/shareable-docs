@@ -78,10 +78,6 @@ export const documentVersions = pgTable(
       table.documentId,
       table.versionNumber,
     ),
-    index("document_versions_document_id_created_at_idx").on(
-      table.documentId,
-      table.createdAt,
-    ),
   ],
 );
 
