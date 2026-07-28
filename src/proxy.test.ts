@@ -73,6 +73,31 @@ describe("proxy", () => {
     expect(mocks.protect).not.toHaveBeenCalled();
   });
 
+  it("marks the token cookie secure in production", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    vi.resetModules();
+
+    try {
+      const response = await runProxy(`https://example.com/d/${documentId}?t=${token}`);
+
+      expect(response?.headers.get("set-cookie")?.toLowerCase()).toContain("secure");
+    } finally {
+      vi.unstubAllEnvs();
+      vi.resetModules();
+    }
+  });
+
+  it("ignores a viewer path whose id is not a ULID", async () => {
+    // The id is interpolated into the cookie name and path, so anything but a
+    // real ULID must not reach Set-Cookie: cookies.set rejects invalid values,
+    // which would turn a crafted URL into a 500 before auth runs.
+    const response = await runProxy(
+      `https://example.com/d/not;a=ulid?t=${token}`,
+    );
+
+    expect(response).toBeUndefined();
+  });
+
   it("still protects dashboard routes", async () => {
     await runProxy("https://example.com/dashboard");
 

@@ -5,7 +5,11 @@ const isProtectedRoute = createRouteMatcher(["/app(.*)", "/dashboard(.*)"]);
 const isApiRoute = createRouteMatcher(["/api(.*)"]);
 const isClerkWebhookRoute = createRouteMatcher(["/api/webhooks/clerk"]);
 const mutatingMethods = new Set(["DELETE", "PATCH", "POST", "PUT"]);
-const documentViewerPath = /^\/d\/([^/]+)$/;
+// The captured id becomes a cookie name and path below, so it is constrained to
+// the ULID shape used everywhere else rather than "anything but a slash": an
+// arbitrary string would reach Set-Cookie unvalidated, and cookies.set rejects
+// invalid values, turning a crafted /d/<bad>?t=... into a 500 before auth runs.
+const documentViewerPath = /^\/d\/([0-9A-HJKMNP-TV-Z]{26})$/;
 
 export default clerkMiddleware(async (auth, req) => {
   const tokenRedirect = redirectDocumentLinkToken(req);
