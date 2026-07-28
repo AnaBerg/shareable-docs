@@ -133,7 +133,7 @@ Repository modules under `src/server/repositories/docs` should own Drizzle queri
 `src/server/foundation/logs.ts` exposes `createRequestLog`, which builds one canonical wide event per request. The handler wrapper creates the log, context and services enrich it with `log.add(...)` while the request runs, and the wrapper emits it exactly once. The event includes:
 
 - `requestId`, HTTP method and pathname.
-- Response status, outcome, and duration in milliseconds.
+- Response status, duration in milliseconds, and an `outcome` of `success`, `client_error`, or `server_error`. Client and server failures are separate buckets because `403`, `404`, and `409` are routine outcomes of this API and would otherwise drown the responses that mean something is broken.
 - Service, environment, and deployment identity (`deploymentId`, `region`) when available.
 - `userId` when a local user was resolved.
 - Business context added by the request: `documentId`, `documentAccess`, `documentVersion`, `documentCount`, `shareCount`.

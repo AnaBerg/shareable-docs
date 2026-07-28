@@ -54,9 +54,24 @@ describe("API logs", () => {
       expect.objectContaining({
         requestId: "req_1",
         statusCode: 500,
-        outcome: "error",
+        outcome: "server_error",
       }),
     );
+  });
+
+  it("separates client failures from server failures", () => {
+    const info = vi.spyOn(console, "info").mockImplementation(() => {});
+    const emitWith = (status: number) => {
+      createRequestLog({ requestId: "req_1", method: "GET", path: "/api/docs" }).emit({
+        status,
+        durationMs: 1,
+      });
+      return info.mock.calls.at(-1)?.[0] as { outcome: string };
+    };
+
+    expect(emitWith(200).outcome).toBe("success");
+    expect(emitWith(403).outcome).toBe("client_error");
+    expect(emitWith(500).outcome).toBe("server_error");
   });
 
   it("describes API errors with code, message and retriability", () => {

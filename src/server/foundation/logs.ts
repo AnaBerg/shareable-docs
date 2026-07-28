@@ -1,6 +1,23 @@
 import { isApiError } from "./errors";
 
-type ApiLogOutcome = "success" | "error";
+/**
+ * Client and server failures are separate buckets: 403/404/409 are routine
+ * outcomes of this API, so folding them in with 5xx would drown the responses
+ * that actually mean something is broken.
+ */
+type ApiLogOutcome = "success" | "client_error" | "server_error";
+
+function outcomeForStatus(status: number): ApiLogOutcome {
+  if (status >= 500) {
+    return "server_error";
+  }
+
+  if (status >= 400) {
+    return "client_error";
+  }
+
+  return "success";
+}
 
 /**
  * One wide event per request, enriched while the request runs and emitted once
@@ -39,7 +56,7 @@ export function createRequestLog(source: RequestLogSource): RequestLog {
         method: source.method,
         path: source.path,
         statusCode: status,
-        outcome: (status >= 400 ? "error" : "success") satisfies ApiLogOutcome,
+        outcome: outcomeForStatus(status),
         durationMs,
         ...(error === undefined ? {} : describeError(error)),
       });

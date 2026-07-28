@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { forbiddenError } from "@/server/foundation/errors";
 
@@ -15,11 +15,30 @@ vi.mock("@/server/foundation/context", () => ({
   }),
 }));
 
+const log = vi.hoisted(() => ({ add: vi.fn(), emit: vi.fn() }));
+
 vi.mock("@/server/foundation/logs", () => ({
-  createRequestLog: vi.fn(() => ({ add: vi.fn(), emit: vi.fn() })),
+  createRequestLog: vi.fn(() => log),
 }));
 
 describe("API handler foundation", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns the handler response unchanged and logs the success", async () => {
+    const { withApiHandler } = await import("./api");
+    const handlerResponse = new Response(null, { status: 204 });
+    const handler = withApiHandler(async () => handlerResponse);
+
+    const response = await handler(new Request("https://app.test/api/docs"));
+
+    expect(response).toBe(handlerResponse);
+    expect(log.emit).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 204 }),
+    );
+  });
+
   it("converts API errors into a JSON error response", async () => {
     const { withApiHandler } = await import("./api");
     const handler = withApiHandler(async () => {
