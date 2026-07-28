@@ -7,7 +7,7 @@ const mutatingMethods = new Set(["DELETE", "PATCH", "POST", "PUT"]);
 
 export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req) || isProtectedApiRoute(req)) {
-    await auth.protect();
+    await auth.protect({ token: ["session_token", "api_key"] });
   }
 });
 
