@@ -7,6 +7,16 @@ const nonEmptyTrimmedStringSchema = z
 
 const nonEmptyStringSchema = z.string().min(1, "Required");
 
+const documentNameSchema = nonEmptyTrimmedStringSchema.max(
+  200,
+  "Name is too long",
+);
+
+const documentHtmlSchema = nonEmptyStringSchema.max(
+  1_000_000,
+  "Document is too large",
+);
+
 const dateSchema = z.date();
 const ulidSchema = z
   .string()
@@ -27,6 +37,7 @@ const storedEmailSchema = z
 const nullishDescriptionSchema = z
   .string()
   .trim()
+  .max(2000, "Description is too long")
   .nullish()
   .transform((description) => {
     if (description === undefined || description === null || description === "") {
@@ -37,13 +48,13 @@ const nullishDescriptionSchema = z
   });
 
 export const createDocumentRequestSchema = z.object({
-  name: nonEmptyTrimmedStringSchema,
+  name: documentNameSchema,
   description: nullishDescriptionSchema,
-  html: nonEmptyStringSchema,
+  html: documentHtmlSchema,
 });
 
 export const updateDocumentRequestSchema = z.object({
-  html: nonEmptyStringSchema,
+  html: documentHtmlSchema,
 });
 
 export const getDocumentQuerySchema = z.object({
@@ -58,6 +69,7 @@ export const shareDocumentRequestSchema = z.object({
   emails: z
     .array(normalizedEmailSchema)
     .nonempty()
+    .max(50, "Too many emails")
     .transform((emails) => [...new Set(emails)]),
 });
 
@@ -69,7 +81,7 @@ export const newDocumentSchema = z
   .object({
     id: ulidSchema,
     ownerUserId: nonEmptyStringSchema,
-    name: nonEmptyTrimmedStringSchema,
+    name: documentNameSchema,
     description: nullishDescriptionSchema,
     createdAt: dateSchema,
     updatedAt: dateSchema,
@@ -82,7 +94,7 @@ export const newDocumentVersionSchema = z
     id: ulidSchema,
     documentId: ulidSchema,
     versionNumber: z.number().int().positive(),
-    html: nonEmptyStringSchema,
+    html: documentHtmlSchema,
     createdByUserId: nonEmptyStringSchema,
     createdAt: dateSchema,
   })

@@ -86,6 +86,33 @@ describe("docs HTTP handlers", () => {
     });
   });
 
+  it("rejects a document larger than the html limit", async () => {
+    const { createDocumentHandler } = await import(".");
+    const response = await createDocumentHandler(
+      jsonRequest("https://app.test/api/docs", {
+        name: "Report",
+        description: null,
+        html: "a".repeat(1_000_001),
+      }),
+    );
+
+    expect(response.status).toBe(422);
+    expect(serviceMocks.createDocument).not.toHaveBeenCalled();
+  });
+
+  it("rejects a share request above the email limit", async () => {
+    const { shareDocumentHandler } = await import(".");
+    const response = await shareDocumentHandler(
+      jsonRequest("https://app.test/api/docs/share/01HZXJK8JHX7QY9N7K6X8Y2W0A", {
+        emails: Array.from({ length: 51 }, (_, index) => `user${index}@example.com`),
+      }),
+      { params: Promise.resolve({ id: "01HZXJK8JHX7QY9N7K6X8Y2W0A" }) },
+    );
+
+    expect(response.status).toBe(422);
+    expect(serviceMocks.shareDocument).not.toHaveBeenCalled();
+  });
+
   it("lists documents and rejects invalid access filters", async () => {
     serviceMocks.listDocuments.mockResolvedValue({ documents: [] });
 

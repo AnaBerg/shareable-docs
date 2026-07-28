@@ -201,17 +201,19 @@ Create shared schemas for endpoint inputs, database inserts, and document-facing
 API schemas:
 
 - `createDocumentRequestSchema`
-  - `name`: non-empty string.
-  - `description`: optional string; blank strings may be normalized to `null`.
-  - `html`: non-empty string.
+  - `name`: non-empty string of at most 200 characters.
+  - `description`: optional string of at most 2000 characters; blank strings may be normalized to `null`.
+  - `html`: non-empty string of at most 1,000,000 characters.
 - `updateDocumentRequestSchema`
-  - `html`: non-empty string.
+  - `html`: non-empty string of at most 1,000,000 characters.
 - `getDocumentQuerySchema`
   - `version`: optional positive integer parsed from the query string.
 - `listDocumentsQuerySchema`
   - `access`: optional enum `"all" | "owned" | "shared"`, default `"all"`.
 - `shareDocumentRequestSchema`
-  - `emails`: non-empty array of valid email strings.
+  - `emails`: non-empty array of at most 50 valid email strings; the limit applies to what the caller sent, before deduplication.
+
+Every request schema is bounded so a single call cannot store an arbitrarily large document or insert an unbounded number of share rows. The same bounds are reused by the database write schemas, so `newDocumentSchema` enforces the name and description limits and `newDocumentVersionSchema` enforces the HTML limit at the persistence boundary as well.
 
 Database write schemas:
 
