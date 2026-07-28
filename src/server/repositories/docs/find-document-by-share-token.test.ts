@@ -27,14 +27,18 @@ describe("findDocumentByShareToken", () => {
     ).resolves.toBeNull();
   });
 
-  it("filters out revoked links and soft-deleted documents", async () => {
+  it("matches only the given token hash, on active links and live documents", async () => {
     const chain = joinLimitChain([]);
     const db = { select: vi.fn(() => chain) } as unknown as DocumentsDatabase;
 
     await findDocumentByShareToken(db, "a".repeat(64));
 
     const [condition] = chain.where.mock.calls[0] as unknown as [SQL];
-    const { sql } = new PgDialect().sqlToQuery(condition);
+    const { sql, params } = new PgDialect().sqlToQuery(condition);
+    // Security invariant: without the token_hash equality, ANY token would
+    // match any document that has an active share link.
+    expect(sql).toContain('"document_share_links"."token_hash" = ');
+    expect(params).toContain("a".repeat(64));
     expect(sql).toContain('"document_share_links"."revoked_at" is null');
     expect(sql).toContain('"documents"."deleted_at" is null');
   });

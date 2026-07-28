@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
+import type { SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
 
 import type { DocumentsDatabase } from "@/types/docs-repository";
 
@@ -34,6 +36,15 @@ describe("upsertShareLink", () => {
     expect(updateChain.set).toHaveBeenCalledWith({
       revokedAt: expect.any(Date),
     });
+
+    const [condition] = updateChain.where.mock.calls[0] as unknown as [SQL];
+    const { sql, params } = new PgDialect().sqlToQuery(condition);
+    // Security invariant: without the documentId scoping, rotating one link
+    // would revoke every active share link in the database.
+    expect(sql).toContain('"document_share_links"."document_id" = ');
+    expect(params).toContain("01ARZ3NDEKTSV4RRFFQ69G5FAV");
+    expect(sql).toContain('"document_share_links"."revoked_at" is null');
+
     expect(insertChain.values).toHaveBeenCalledWith(
       expect.objectContaining({ tokenHash: "a".repeat(64) }),
     );

@@ -104,6 +104,23 @@ describe("createApiContext", () => {
     }
   });
 
+  it("rejects an unauthenticated api_key even when it carries a user subject", async () => {
+    const { auth } = await import("@clerk/nextjs/server");
+    vi.mocked(auth).mockResolvedValue({
+      tokenType: "api_key",
+      subject: "user_123",
+      isAuthenticated: false,
+    } as never);
+
+    const { createApiContext } = await import("./context");
+    const result = await createApiContext({ log: fakeLog(), database: fakeDb() });
+
+    expect(result.ok).toBe(false);
+    if (!result.ok) {
+      expect(result.error).toMatchObject({ status: 401, code: "unauthorized" });
+    }
+  });
+
   it("rejects an api_key whose subject is not a user id", async () => {
     const { auth } = await import("@clerk/nextjs/server");
     vi.mocked(auth).mockResolvedValue({
