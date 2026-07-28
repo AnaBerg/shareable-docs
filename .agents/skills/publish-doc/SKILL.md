@@ -81,7 +81,7 @@ Response contains the full shareable `url` (shaped like `$SHAREABLE_DOCS_URL/d/<
 
 Always end by giving the user the viewer URL:
 
-- Signed-in access (owner, or emails shared via `POST /api/docs/<id>/share`): `$SHAREABLE_DOCS_URL/d/<id>`
+- Signed-in access (owner, or emails shared via `POST /api/docs/share/<id>`): `$SHAREABLE_DOCS_URL/d/<id>`
 - Secret link (no sign-in needed): the `url` returned by the `/link` call
 
 Only create a secret link when the user asked for one; otherwise the plain `/d/<id>` URL is the answer.

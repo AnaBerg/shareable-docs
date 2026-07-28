@@ -7,7 +7,7 @@ Publish HTML documents from an agent or the CLI, and share them with your team t
 A document can be opened in three ways:
 
 1. **Owner** — the signed-in user who created it (directly or via their API key) can always open `/d/<id>`.
-2. **Shared by email** — the owner shares the document with specific emails (`POST /api/docs/<id>/share`); recipients open `/d/<id>` while signed in with a matching email.
+2. **Shared by email** — the owner shares the document with specific emails (`POST /api/docs/share/<id>`); recipients open `/d/<id>` while signed in with a matching email.
 3. **Secret link** — the owner creates an optional per-document link (`POST /api/docs/<id>/link`); anyone with `/d/<id>?t=<token>` can read the document without an account. Creating a new link rotates the token and invalidates the old one; revoking disables it.
 
 Secret links are read-only. Unauthorized viewers get a 404, never a 403, so document existence is not leaked.
