@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { getTableColumns, getTableName } from "drizzle-orm";
-import { getTableConfig } from "drizzle-orm/pg-core";
+import { PgDialect, getTableConfig } from "drizzle-orm/pg-core";
 
 import * as schema from "./schema";
 
@@ -178,5 +178,80 @@ describe("document schema", () => {
     expectForeignKey(table, "document_shares_document_id_documents_id_fk");
     expectForeignKey(table, "document_shares_shared_by_user_id_users_id_fk");
     expectCheck(table, "document_shares_shared_with_email_normalized_check");
+  });
+
+  it("exports documentShareLinks with required columns", () => {
+    const table = schema.documentShareLinks as TableExport;
+    const columns = expectTableExport(
+      "documentShareLinks",
+      "document_share_links",
+    );
+
+    expectColumn(columns.id, {
+      name: "id",
+      notNull: true,
+      primary: true,
+      columnType: "PgText",
+    });
+    expectColumn(columns.documentId, {
+      name: "document_id",
+      notNull: true,
+      columnType: "PgText",
+    });
+    expectColumn(columns.tokenHash, {
+      name: "token_hash",
+      notNull: true,
+      columnType: "PgText",
+    });
+    expectColumn(columns.createdByUserId, {
+      name: "created_by_user_id",
+      notNull: true,
+      columnType: "PgText",
+    });
+    expectColumn(columns.createdAt, {
+      name: "created_at",
+      notNull: true,
+      columnType: "PgTimestamp",
+    });
+    expectColumn(columns.revokedAt, {
+      name: "revoked_at",
+      notNull: false,
+      columnType: "PgTimestamp",
+    });
+    expectIndex(table, {
+      name: "document_share_links_token_hash_unique",
+      unique: true,
+      columns: ["token_hash"],
+    });
+    expectIndex(table, {
+      name: "document_share_links_document_id_idx",
+      unique: false,
+      columns: ["document_id"],
+    });
+    expectIndex(table, {
+      name: "document_share_links_document_id_active_unique",
+      unique: true,
+      columns: ["document_id"],
+    });
+    expectForeignKey(table, "document_share_links_document_id_documents_id_fk");
+    expectForeignKey(
+      table,
+      "document_share_links_created_by_user_id_users_id_fk",
+    );
+  });
+
+  it("allows at most one active share link per document", () => {
+    const table = schema.documentShareLinks as TableExport;
+    const index = getTableConfig(table).indexes.find(
+      (candidate) =>
+        candidate.config.name ===
+        "document_share_links_document_id_active_unique",
+    );
+
+    expect(index?.config.unique).toBe(true);
+    expect(index?.config.where).toBeDefined();
+
+    const { sql } = new PgDialect().sqlToQuery(index!.config.where!);
+    expect(sql).toContain('"revoked_at" is null');
   });
 });

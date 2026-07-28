@@ -15,6 +15,20 @@
       "when": 1781298395771,
       "tag": "0001_create_document_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785203373024,
+      "tag": "0002_bored_swordsman",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1785204878525,
+      "tag": "0003_skinny_vermin",
+      "breakpoints": true
     }
   ]
 }

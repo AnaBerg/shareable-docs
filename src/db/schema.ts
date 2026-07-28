@@ -109,9 +109,36 @@ export const documentShares = pgTable(
   ],
 );
 
+export const documentShareLinks = pgTable(
+  "document_share_links",
+  {
+    id: text("id").primaryKey(),
+    documentId: text("document_id")
+      .notNull()
+      .references(() => documents.id),
+    tokenHash: text("token_hash").notNull(),
+    createdByUserId: text("created_by_user_id")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .$defaultFn(() => new Date()),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+  },
+  (table) => [
+    uniqueIndex("document_share_links_token_hash_unique").on(table.tokenHash),
+    index("document_share_links_document_id_idx").on(table.documentId),
+    uniqueIndex("document_share_links_document_id_active_unique")
+      .on(table.documentId)
+      .where(sql`${table.revokedAt} is null`),
+  ],
+);
+
 export type Document = typeof documents.$inferSelect;
 export type NewDocument = typeof documents.$inferInsert;
 export type DocumentVersion = typeof documentVersions.$inferSelect;
 export type NewDocumentVersion = typeof documentVersions.$inferInsert;
 export type DocumentShare = typeof documentShares.$inferSelect;
 export type NewDocumentShare = typeof documentShares.$inferInsert;
+export type DocumentShareLink = typeof documentShareLinks.$inferSelect;
+export type NewDocumentShareLink = typeof documentShareLinks.$inferInsert;

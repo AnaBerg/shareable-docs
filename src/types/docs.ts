@@ -100,6 +100,36 @@ export const newDocumentVersionSchema = z
   })
   .strict();
 
+const tokenHashSchema = z
+  .string()
+  .regex(/^[0-9a-f]{64}$/, "Invalid token hash");
+
+export const newDocumentShareLinkSchema = z
+  .object({
+    id: ulidSchema,
+    documentId: ulidSchema,
+    tokenHash: tokenHashSchema,
+    createdByUserId: nonEmptyStringSchema,
+    createdAt: dateSchema,
+    revokedAt: dateSchema.nullable().optional(),
+  })
+  .strict();
+
+export const createShareLinkResponseSchema = z
+  .object({
+    id: ulidSchema,
+    url: z.string().url(),
+    token: nonEmptyStringSchema,
+  })
+  .strict();
+
+export const revokeShareLinkResponseSchema = z
+  .object({
+    id: ulidSchema,
+    revoked: z.boolean(),
+  })
+  .strict();
+
 export const newDocumentShareSchema = z
   .object({
     id: ulidSchema,
@@ -123,3 +153,10 @@ export type DocumentRouteParams = z.infer<typeof documentRouteParamsSchema>;
 export type NewDocument = z.infer<typeof newDocumentSchema>;
 export type NewDocumentVersion = z.infer<typeof newDocumentVersionSchema>;
 export type NewDocumentShare = z.infer<typeof newDocumentShareSchema>;
+export type NewDocumentShareLink = z.infer<typeof newDocumentShareLinkSchema>;
+export type CreateShareLinkResponse = z.infer<
+  typeof createShareLinkResponseSchema
+>;
+export type RevokeShareLinkResponse = z.infer<
+  typeof revokeShareLinkResponseSchema
+>;
