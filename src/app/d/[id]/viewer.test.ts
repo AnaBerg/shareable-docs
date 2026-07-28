@@ -178,6 +178,32 @@ describe("document viewer page", () => {
     );
   });
 
+  it("falls back to the Clerk session when the link cookie is stale", async () => {
+    // Regression: a stale or planted doc_token_<id> cookie (e.g. after the
+    // owner rotates the link) must not lock a session-authorized viewer out.
+    mocks.auth.mockResolvedValue({ userId: "clerk_owner" });
+    mocks.findActiveUserByClerkId.mockResolvedValue({
+      id: "owner",
+      clerkUserId: "clerk_owner",
+      primaryEmail: "owner@example.com",
+    });
+    mocks.viewDocument.mockImplementation(async ({ viewer }) =>
+      viewer?.kind === "user"
+        ? viewResult("<p>doc</p>")
+        : Promise.reject(notFoundError("Document not found")),
+    );
+    setLinkTokenCookie("stale-token");
+
+    const markup = await renderPage();
+
+    expect(markup).toContain("Quarterly Report");
+    expect(mocks.viewDocument).toHaveBeenCalledWith(
+      expect.objectContaining({
+        viewer: { kind: "user", userId: "owner", email: "owner@example.com" },
+      }),
+    );
+  });
+
   it("falls back to the Clerk session when there is no token", async () => {
     mocks.auth.mockResolvedValue({ userId: "clerk_owner" });
     mocks.findActiveUserByClerkId.mockResolvedValue({

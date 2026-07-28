@@ -30,11 +30,9 @@ export default async function DocumentViewerPage({
   // (src/proxy.ts) strips `?t=` into this httpOnly, per-document cookie before
   // the page renders; keep the cookie name in sync with it.
   const token = (await cookies()).get(`doc_token_${id}`)?.value;
-  const viewer =
-    token === undefined ? await resolveSessionViewer() : { kind: "link" as const, token };
 
-  const { document, version, latestVersion } = await viewDocumentOrNotFound({
-    viewer,
+  const { document, version, latestVersion } = await viewDocumentForVisitor({
+    token,
     documentId: id,
     version: query.data.version,
   });
@@ -80,7 +78,33 @@ async function resolveSessionViewer(): Promise<DocumentViewer | null> {
   return { kind: "user", userId: user.id, email: normalizeEmail(user.primaryEmail) };
 }
 
-async function viewDocumentOrNotFound(input: {
+// The proxy stores the cookie for any /d/<id>?t=... visit without validating
+// it, so a stale token (e.g. after the owner rotates the link) or a planted
+// one must not shadow a session-authorized viewer: try the link token first,
+// then fall back to the Clerk session before giving up with a 404.
+async function viewDocumentForVisitor(input: {
+  token: string | undefined;
+  documentId: string;
+  version: number | undefined;
+}) {
+  const { token, ...rest } = input;
+
+  if (token !== undefined) {
+    const byLink = await viewDocumentOrNull({ viewer: { kind: "link", token }, ...rest });
+    if (byLink) {
+      return byLink;
+    }
+  }
+
+  const bySession = await viewDocumentOrNull({ viewer: await resolveSessionViewer(), ...rest });
+  if (!bySession) {
+    notFound();
+  }
+
+  return bySession;
+}
+
+async function viewDocumentOrNull(input: {
   viewer: DocumentViewer | null;
   documentId: string;
   version: number | undefined;
@@ -89,7 +113,7 @@ async function viewDocumentOrNotFound(input: {
     return await viewDocument({ db, ...input });
   } catch (error) {
     if (isApiError(error)) {
-      notFound();
+      return null;
     }
 
     throw error;
